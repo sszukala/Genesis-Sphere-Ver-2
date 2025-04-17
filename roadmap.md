@@ -75,8 +75,17 @@ python genesis_sphere_animation.py
 # Alternative animation script with fallback (works without FFmpeg)
 python genesis_sphere_animation_fallback.py
 
-# Generate 3D and 4D visualizations
+# Generate 3D and 4D visualizations (static images)
 python genesis_sphere_3d_visualization.py
+
+# Generate animated 3D/4D visualizations (requires FFmpeg)
+python animation_3d_density.py         # Rotating 3D density surface
+python animation_3d_parametric.py      # Growing and rotating 3D parametric curve
+python animation_spacetime_folding.py  # Evolving space-time folding with parameter changes
+python animation_4d_visualization.py   # 4D visualization with pressure wave
+
+# Run all animations in sequence
+python run_all_animations.py
 
 # For Jupyter notebook users
 jupyter notebook genesis_sphere_notebook.ipynb
@@ -104,7 +113,12 @@ Genesis-Sphere-Ver-2/
 │   ├── genesis_sphere_simulation.py     # Basic simulation script
 │   ├── genesis_sphere_animation.py      # Animated visualization script
 │   ├── genesis_sphere_animation_fallback.py # Animation with fallback options
-│   ├── genesis_sphere_3d_visualization.py  # 3D/4D visualization script
+│   ├── genesis_sphere_3d_visualization.py   # Static 3D/4D visualization script
+│   ├── animation_3d_density.py          # 3D density surface animation
+│   ├── animation_3d_parametric.py       # 3D parametric curve animation
+│   ├── animation_spacetime_folding.py   # Space-time folding animation
+│   ├── animation_4d_visualization.py    # 4D visualization animation
+│   ├── run_all_animations.py            # Script to run all animations
 │   └── genesis_sphere_notebook.ipynb    # Jupyter notebook version
 └── output/                        # Generated visualization outputs
     ├── simulation_output.png          # Static visualization
@@ -112,7 +126,11 @@ Genesis-Sphere-Ver-2/
     ├── 3d_density_surface.png         # 3D surface visualization
     ├── 3d_parametric_curve.png        # 3D curve visualization
     ├── 4d_visualization.png           # 4D (color as dimension) visualization
-    └── 3d_spacetime_folding.png       # Space-time folding visualization
+    ├── 3d_spacetime_folding.png       # Space-time folding visualization
+    ├── 3d_density_animation.mp4       # Animated 3D density surface
+    ├── 3d_parametric_animation.mp4    # Animated 3D parametric curve
+    ├── spacetime_folding_animation.mp4 # Animated space-time folding
+    └── 4d_visualization_animation.mp4 # Animated 4D visualization
 ```
 
 ---
