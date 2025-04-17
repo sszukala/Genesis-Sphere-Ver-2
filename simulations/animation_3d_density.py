@@ -3,31 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 from mpl_toolkits.mplot3d import Axes3D
 import os
-import shutil
-import subprocess
-from matplotlib.animation import FuncAnimation
-
-def check_ffmpeg():
-    """Check if FFmpeg is available in the system or common installation locations"""
-    if shutil.which('ffmpeg'):
-        return True
-    
-    # Common installation locations on Windows
-    common_locations = [
-        os.path.join(os.environ.get('USERPROFILE', ''), 'ffmpeg', 'bin', 'ffmpeg.exe'),
-        r'C:\ffmpeg\bin\ffmpeg.exe',
-        r'C:\Program Files\ffmpeg\bin\ffmpeg.exe',
-        r'C:\Program Files (x86)\ffmpeg\bin\ffmpeg.exe'
-    ]
-    
-    for location in common_locations:
-        if os.path.exists(location):
-            print(f"FFmpeg found at {location} but not in system PATH")
-            print("Temporarily adding to PATH for this session...")
-            os.environ['PATH'] += os.pathsep + os.path.dirname(location)
-            return True
-    
-    return False
+from animation_helper import generate_animation_with_progress, save_frame
 
 def generate_animation():
     """Generate 3D density surface animation with rotating perspective"""
@@ -53,91 +29,37 @@ def generate_animation():
     D = 1 + alpha * T**2
     rho = S * D
     
-    # Create a figure for the animation frames
-    fig = plt.figure(figsize=(10, 8))
-    ax = fig.add_subplot(111, projection='3d')
-    
-    # Initial surface plot
-    surf = ax.plot_surface(T, W, rho, cmap=cm.viridis, alpha=0.8,
-                          linewidth=0, antialiased=True)
-    
-    # Add labels and colorbar
-    ax.set_xlabel('Time (t)')
-    ax.set_ylabel('Frequency (ω)')
-    ax.set_zlabel('Space-Time Density (ρ)')
-    ax.set_title('3D Surface: Space-Time Density Variation')
-    fig.colorbar(surf, ax=ax, shrink=0.5, aspect=5)
-    
-    # Function to update the plot for each animation frame
-    def update(frame):
-        # Clear previous plot
-        ax.clear()
+    # Function to generate each frame
+    def generate_frame(i, total_frames):
+        # Create a new figure for each frame
+        fig = plt.figure(figsize=(10, 8))
+        ax = fig.add_subplot(111, projection='3d')
         
         # Set a new viewing angle that rotates around
         elevation = 30
-        azimuth = frame * 3  # Rotate 3 degrees per frame
+        azimuth = i * 3  # Rotate 3 degrees per frame
         ax.view_init(elevation, azimuth)
         
-        # Re-plot the surface
+        # Plot the surface
         surf = ax.plot_surface(T, W, rho, cmap=cm.viridis, alpha=0.8,
                               linewidth=0, antialiased=True)
         
-        # Add labels again (since we cleared the axes)
+        # Add labels
         ax.set_xlabel('Time (t)')
         ax.set_ylabel('Frequency (ω)')
         ax.set_zlabel('Space-Time Density (ρ)')
         ax.set_title('3D Surface: Space-Time Density Variation')
-        
-        return [surf]
-    
-    # Total number of frames (120 = 360 degrees rotation at 3 degrees per frame)
-    frames = 120
-    
-    # Generate and save each frame
-    for i in range(frames):
-        # Update the figure for this frame
-        update(i)
+        fig.colorbar(surf, ax=ax, shrink=0.5, aspect=5)
         
         # Save the frame
-        frame_file = os.path.join(frames_dir, f'frame_{i:03d}.png')
-        plt.savefig(frame_file, dpi=150)
-        print(f"Saved frame {i+1}/{frames}")
+        frame_file = save_frame(i, total_frames, fig, frames_dir)
+        plt.close(fig)
+        
+        return frame_file
     
-    plt.close(fig)
-    
-    # Check if FFmpeg is available
-    if check_ffmpeg():
-        try:
-            # Compile the frames into a video using FFmpeg
-            output_file = os.path.join(output_dir, '3d_density_animation.mp4')
-            
-            # FFmpeg command to create a video from the frames
-            cmd = [
-                'ffmpeg',
-                '-y',  # Overwrite existing files
-                '-framerate', '30',  # Frames per second
-                '-i', os.path.join(frames_dir, 'frame_%03d.png'),
-                '-c:v', 'libx264',
-                '-profile:v', 'high',
-                '-crf', '20',  # Quality (lower is better)
-                '-pix_fmt', 'yuv420p',
-                output_file
-            ]
-            
-            print(f"Running FFmpeg to create video: {' '.join(cmd)}")
-            subprocess.run(cmd, check=True)
-            
-            print(f"Animation saved successfully to {output_file}")
-            return output_file
-            
-        except Exception as e:
-            print(f"Error creating video with FFmpeg: {e}")
-            print(f"Individual frames can be found in {frames_dir}")
-    else:
-        print("FFmpeg not found. Cannot create video.")
-        print(f"Individual frames can be found in {frames_dir}")
-    
-    return frames_dir
+    # Generate the animation with progress tracking
+    output_file = os.path.join(output_dir, '3d_density_animation.mp4')
+    return generate_animation_with_progress(frames_dir, generate_frame, output_file)
 
 if __name__ == "__main__":
     print("Generating 3D density surface animation...")
