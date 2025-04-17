@@ -6,7 +6,7 @@ This document outlines the development roadmap for the Genesis-Sphere framework,
 
 - [ ] Explore time-space distortions during cosmic evolution
 - [ ] Model behavior near singularities with simple, interpretable math
-- [ ] Build tools or simulations for visualizing time-density spheres
+- [x] Build tools or simulations for visualizing time-density spheres
 - [ ] Develop alternate cosmological insights using modulated functions
 
 ## 🔬 Potential Applications
@@ -25,6 +25,7 @@ This document outlines the development roadmap for the Genesis-Sphere framework,
 
 ### Phase 2: Implementation (Q4 2025)
 - [x] Develop visualization tools
+- [x] Create 3D/4D visualizations of model dynamics
 - [ ] Build computational models
 - [ ] Validate against existing cosmological data
 
@@ -80,6 +81,17 @@ python genesis_sphere_3d_visualization.py
 # For Jupyter notebook users
 jupyter notebook genesis_sphere_notebook.ipynb
 ```
+
+### Completed Visualizations
+
+The project now includes the following visualizations:
+
+- **2D Static Plots**: Basic time-dependent function relationships
+- **2D Animations**: Dynamic evolution of model variables over time
+- **3D Surface Plots**: Space-time density variation across parameters
+- **3D Parametric Curves**: System evolution traces in three dimensions
+- **4D Color Mapping**: Using color as a fourth dimension for pressure
+- **Space-Time Folding**: Visualization of distortions near singularities
 
 ### File Structure
 ```

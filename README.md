@@ -105,6 +105,25 @@ Note: Video animation requires FFmpeg to be installed. The framework will automa
 python genesis_sphere_animation_fallback.py
 ```
 
+## 🌐 3D/4D Visualizations
+
+The framework now includes advanced 3D and 4D visualizations to provide deeper insights into the Genesis-Sphere model:
+
+1. **3D Surface Plot**: Shows space-time density variation across time and frequency parameters
+   
+2. **3D Parametric Curve**: Traces the evolution of the system in 3D space (time, density, velocity)
+   
+3. **4D Visualization**: Uses 3D coordinates with color as the fourth dimension to represent pressure
+   
+4. **Space-Time Folding**: Visualizes how space-time might fold near a singularity
+
+```bash
+# Generate all 3D/4D visualizations
+python simulations/genesis_sphere_3d_visualization.py
+```
+
+![3D Surface Example](output/3d_density_surface.png)
+
 ---
 
 ## 🔗 Getting Started
