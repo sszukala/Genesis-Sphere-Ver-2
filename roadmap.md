@@ -40,6 +40,40 @@ This document outlines the development roadmap for the Genesis-Sphere framework,
 - [ ] Collaboration with physics and math specialists
 - [ ] Visualization expertise for complex data representation
 
+## 🛠️ Development Setup & Commands
+
+### Environment Setup
+```bash
+# Install required dependencies
+pip install -r requirements.txt
+```
+
+### Running Simulations
+```bash
+# Navigate to simulations directory
+cd simulations
+
+# Run the basic simulation
+python genesis_sphere_simulation.py
+
+# For Jupyter notebook users
+jupyter notebook genesis_sphere_notebook.ipynb
+```
+
+### File Structure
+```
+Genesis-Sphere-Ver-2/
+├── README.md                      # Project overview
+├── requirements.txt               # Python dependencies
+├── mathematical_framework.md      # Formal mathematical definitions
+├── roadmap.md                     # This project roadmap
+├── simulations/                   # Simulation code
+│   ├── genesis_sphere_simulation.py  # Standalone simulation script
+│   └── genesis_sphere_notebook.ipynb # Jupyter notebook version
+└── output/                        # Generated visualization outputs
+    └── simulation_output.png      # Generated visualization
+```
+
 ---
 
 *This roadmap is a living document and will be updated as the project progresses.*

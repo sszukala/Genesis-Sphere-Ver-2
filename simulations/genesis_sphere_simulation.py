@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 
 # Parameters
 alpha = 0.02
@@ -52,5 +53,14 @@ plt.legend()
 plt.grid(True)
 
 plt.tight_layout()
-plt.savefig('../docs/simulation_output.png', dpi=300)  # Save a high-quality image
+
+# Create output directory if it doesn't exist
+output_dir = os.path.join('..', 'output')
+os.makedirs(output_dir, exist_ok=True)
+output_file = os.path.join(output_dir, 'simulation_output.png')
+
+# Save the figure
+plt.savefig(output_file, dpi=300)
+print(f"Figure saved to {output_file}")
+
 plt.show()
