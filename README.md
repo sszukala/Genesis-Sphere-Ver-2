@@ -1,17 +1,18 @@
-# Genesis Sphere Ver 2
- 
 # 🌌 Genesis-Sphere: A Framework for Space-Time Density and Temporal Flow
 
 **Author**: Shannon Szukala  
-**Last Updated**: April 17, 2025
+**Date**: April 17, 2025
 
 ---
 
 ## 🧠 Overview
 
-**Genesis-Sphere** is a conceptual extension of general relativity that introduces **time-dependent space-time density** and **modulated temporal flow** using simple, interpretable mathematical functions. It is designed to model cosmic phenomena such as singularities, inflation, and cyclic universes using sinusoidal and inverse-scaling behaviors.
+**Genesis-Sphere** is a theoretical framework that extends general relativity by introducing two novel concepts:
 
-> ⚛️ Inspired by both classical and modern cosmological theories, Genesis-Sphere creates a conceptual "modulation zone"—the **Genesis-Sphere**—where time and density behave differently near cosmic origins.
+- **Time-Density Geometry**: A model of space-time density that evolves based on sinusoidal and quadratic scaling.
+- **Temporal Flow Ratio**: A mathematical formulation to simulate how time slows down or normalizes near singularities.
+
+The goal is to provide a more accessible and visualizable way to study cosmic events like the **Big Bang**, **black holes**, and **cyclic universes**.
 
 ---
 
@@ -19,50 +20,45 @@
 
 ### 1. Time-Density Geometry Function
 
-\[
+$$
 \rho(t) = \frac{1}{1 + \sin^2(\omega t)} \cdot (1 + \alpha t^2)
-\]
+$$
 
-- **S(t)** = Sinusoidal projection (bounded and periodic)
-- **D(t)** = Quadratic dimension expansion (models growing spatial complexity)
+- **Sinusoidal Projection Term**: Smooths density behavior over time.
+- **Dimension Expansion Term**: Models growth of spatial complexity.
 
 ---
 
 ### 2. Temporal Flow Ratio Function
 
-\[
+$$
 Tf(t) = \frac{1}{1 + \beta(|t| + \epsilon)}
-\]
+$$
 
-- Slows time near high-density origins (e.g. Big Bang or black holes)
-- Asymptotically approaches 1 over time
+- Near $t = 0$, this function sharply reduces, mimicking **time dilation near singularities**.
+- As $t \rightarrow \infty$, it smoothly approaches 1, simulating **normalized time flow**.
 
 ---
 
-### 3. Derived Equations
+### 3. Derived Modulations
 
-- **Modulated Velocity**:  
-  \[
+- **Modulated Velocity**  
+  $$
   v(t) = v_0 \cdot Tf(t)
-  \]
+  $$
 
-- **Modulated Pressure**:  
-  \[
+- **Modulated Pressure**  
+  $$
   p(t) = p_0 \cdot \rho(t)
-  \]
+  $$
+
+These scale velocity and pressure over time relative to time-density and flow modulation.
 
 ---
 
-## 🎯 Project Goals
+## 📊 Sample Visualization (Python)
 
-- Build visualizations for ρ(t) and Tf(t)
-- Simulate the formation of a time-distorted “Genesis Sphere”
-- Compare model output with GR-inspired cosmological models
-- Explore entropy flow, cosmic inflation, and singularity behavior
-
----
-
-## 📊 Visualization Example (Python/Matplotlib)
+Use this Python script to plot the behavior of $\rho(t)$ and $Tf(t)$.
 
 ```python
 import numpy as np
