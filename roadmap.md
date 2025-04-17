@@ -20,7 +20,7 @@ This document outlines the development roadmap for the Genesis-Sphere framework,
 
 ### Phase 1: Foundation (Q2-Q3 2025)
 - [x] Define mathematical framework
-- [ ] Create initial proof-of-concept simulations
+- [x] Create initial proof-of-concept simulations
 - [ ] Document core equations and principles
 
 ### Phase 2: Implementation (Q4 2025)
