@@ -1,6 +1,16 @@
 # Core dependencies for Genesis-Sphere simulations
 numpy>=1.20.0
 matplotlib>=3.4.0
+
+# FFmpeg system dependency
+# This requires an external installation - not installed via pip
+# Windows: Download from https://ffmpeg.org/download.html and add to PATH
+# macOS: Using Homebrew: 'brew install ffmpeg'
+# Linux: Using apt: 'sudo apt install ffmpeg'
+
+# Animation dependencies (Python wrapper)
+ffmpeg-python>=0.2.0
+
 # Optional visualization dependencies
 # plotly>=5.5.0
 # streamlit>=1.8.0

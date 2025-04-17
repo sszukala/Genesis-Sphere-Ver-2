@@ -86,3 +86,31 @@ plt.ylabel("Function Value")
 plt.legend()
 plt.grid(True)
 plt.show()
+```
+
+## 🎬 Animation Features
+
+Genesis-Sphere includes animation capabilities to visualize how the model's key functions evolve over time:
+
+1. **Static Visualization**: Basic plots showing function relationships using `genesis_sphere_simulation.py`
+
+2. **Video Animation**: Dynamic visualization of function evolution using `genesis_sphere_animation_fallback.py`
+
+3. **Frame Sequences**: Individual image frames showing the progression over time
+
+Note: Video animation requires FFmpeg to be installed. The framework will automatically check for FFmpeg and offers an alternative frame-by-frame visualization if not found.
+
+```bash
+# Run from the simulations directory
+python genesis_sphere_animation_fallback.py
+```
+
+---
+
+## 🔗 Getting Started
+
+1. Clone the repository
+2. Install dependencies with `pip install -r requirements.txt`
+3. Run the simulations from the `simulations` folder
+
+For full setup instructions, see the `roadmap.md` file.
