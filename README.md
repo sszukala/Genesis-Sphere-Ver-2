@@ -237,26 +237,6 @@ python simulations/genesis_sphere_animation_fallback.py
 python simulations/genesis_sphere_3d_visualization.py
 ```
 
-### `/validation` Directory
-Contains tools for validating the Genesis-Sphere model against established cosmological data:
-
-- **`ned_validation.py`**: Compares model predictions with the NASA/IPAC Extragalactic Database cosmology calculator
-- **`astropy_validation.py`**: Validates against standard cosmological models (Planck18, WMAP9, etc.)
-- **`observational_validation.py`**: Tests model fit to observational data (supernovae, CMB, BAO)
-
-```bash
-# From the project root directory:
-
-# Validate against NED cosmology calculator
-python validation/ned_validation.py
-
-# Compare with standard cosmological models
-python validation/astropy_validation.py --model Planck18 --compare density_evolution
-
-# Test against observational data with parameter optimization
-python validation/observational_validation.py --dataset supernovae --optimize
-```
-
 ## 🔄 Cyclic Cosmology and Black Hole Physics
 
 Genesis-Sphere provides a mathematical framework that naturally connects cyclic universe models with black hole physics:
