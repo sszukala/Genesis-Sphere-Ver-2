@@ -401,6 +401,20 @@ python validation/cyclic_universe_validation.py --model tolman --optimize
 
 1. Clone the repository
 2. Install dependencies with `pip install -r requirements.txt`
-3. Run the simulations from the appropriate folder as shown above
+3. Run the simulations or validations from the project root directory:
+
+   ```bash
+   # Run comprehensive validation with default parameters
+   python -m validation.comprehensive_validation
+
+   # Run comprehensive validation with optimization
+   python -m validation.comprehensive_validation --optimize
+
+   # Run static simulations
+   python models/run_static_simulation.py
+
+   # Run 3D/4D visualizations
+   python simulations/genesis_sphere_3d_visualization.py
+   ```
 
 For full setup instructions, see the `roadmap.md` file.
