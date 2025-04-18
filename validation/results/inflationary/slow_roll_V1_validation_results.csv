@@ -1,0 +1,2 @@
+model,correlation,mean_abs_error,mean_squared_error,alpha,beta,omega,epsilon,optimized
+slow_roll_V1,-0.21091865020702905,0.24731835249539372,0.12010554573782777,0.2,0.8,0.9604177322620824,0.1,True

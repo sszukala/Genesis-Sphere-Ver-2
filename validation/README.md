@@ -99,3 +99,54 @@ Validation results are stored in the `/results` subdirectory with the following 
 - Observable comparisons: `results/observables/`
 - Statistical analysis: `results/statistics/`
 - Consistency metrics: `results/consistency/`
+
+## Advanced Theoretical Validations
+
+In addition to standard cosmological model validation, Genesis-Sphere can be validated against specialized theoretical frameworks:
+
+### 1. Inflationary Field Dynamics
+
+```bash
+python inflationary_validation.py --model slow_roll_V1 --optimize
+```
+
+Compares the Genesis-Sphere model with inflationary scalar field evolution, including:
+- Slow-roll inflation models
+- Chaotic inflation scenarios
+- Quadratic potential models
+
+### 2. Cyclic/Bouncing Universe Models
+
+```bash
+python cyclic_universe_validation.py --model ekpyrotic --optimize
+```
+
+Validates Genesis-Sphere against cyclic cosmologies, including:
+- Ekpyrotic/cyclic universe (Steinhardt & Turok)
+- Tolman's oscillating universe
+- Loop quantum cosmology bounce models
+
+### 3. Black Hole Time Dilation
+
+```bash
+python black_hole_validation.py --model schwarzschild --optimize
+```
+
+Tests the temporal flow function against gravitational time dilation near black holes:
+- Schwarzschild black holes
+- Kerr (spinning) black holes
+- Binary black hole merger dynamics
+
+## Running All Validations
+
+To execute all validation tests sequentially, use the provided script:
+
+```bash
+python run_all_validations.py
+```
+
+This will run each validation type with default parameters and produce a comprehensive report in the results directory.
+
+## Citation
+
+If you use the Genesis-Sphere validation framework in your research, please cite:

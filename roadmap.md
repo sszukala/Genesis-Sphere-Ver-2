@@ -27,6 +27,7 @@ This document outlines the development roadmap for the Genesis-Sphere framework,
 - [x] Develop visualization tools
 - [x] Create 3D/4D visualizations of model dynamics
 - [✓] Build computational models 
+- [✓] Implement cyclic universe and black hole correspondence mapping
 - [ ] Validate against existing cosmological data
 
 ### Phase 3: Application (Q1-Q2 2026)
@@ -79,6 +80,28 @@ python models/run_static_simulation.py
 python models/animate_density.py
 ```
 
+#### Cyclic Cosmology & Black Hole Physics (`/models`, `/simulations`)
+
+The cyclic cosmology and black hole correspondence model shows how Genesis-Sphere naturally connects these phenomena:
+
+```bash
+# Run from project root directory
+
+# Core cyclic/black hole model
+python models/cyclic_bh_mapping.py
+
+# Parameter exploration for cyclic cosmology
+python simulations/cyclic_cosmology_simulation.py --param-exploration
+
+# Run with custom parameters
+python simulations/cyclic_cosmology_simulation.py --omega 1.5 --beta 0.6
+
+# Specify cycle period directly
+python simulations/cyclic_cosmology_simulation.py --cycle-period 8
+```
+
+Visualizations and documentation are saved to the `/output/cyclic_bh/` directory.
+
 #### Visualization Scripts (`/simulations`)
 
 The `/simulations` directory contains higher-level visualization scripts:
@@ -130,6 +153,7 @@ The project now includes the following visualizations:
 - **3D Parametric Curves**: System evolution traces in three dimensions
 - **4D Color Mapping**: Using color as a fourth dimension for pressure
 - **Space-Time Folding**: Visualization of distortions near singularities
+- **Cyclic Universe and Black Hole Correspondence**: Visualizations and animations showing how the model connects black hole physics with cyclic cosmology
 
 ### File Structure
 ```
@@ -142,6 +166,7 @@ Genesis-Sphere-Ver-2/
 │   ├── genesis_model.py           # Main class implementation
 │   ├── run_static_simulation.py   # Parameter sensitivity analysis
 │   ├── animate_density.py         # Parameter evolution animations
+│   ├── cyclic_bh_mapping.py       # Cyclic cosmology and black hole mapping
 │   └── simulation.ipynb           # Advanced interactive notebook
 ├── simulations/                   # Visualization scripts
 │   ├── genesis_sphere_simulation.py     # Basic simulation script
@@ -152,6 +177,7 @@ Genesis-Sphere-Ver-2/
 │   ├── animation_3d_parametric.py       # 3D parametric curve animation
 │   ├── animation_spacetime_folding.py   # Space-time folding animation
 │   ├── animation_4d_visualization.py    # 4D visualization animation
+│   ├── cyclic_cosmology_simulation.py   # Cyclic cosmology simulation
 │   ├── run_all_animations.py            # Script to run all animations
 │   └── genesis_sphere_notebook.ipynb    # Jupyter notebook version
 ├── validation/                    # Model validation against cosmological data
@@ -172,6 +198,11 @@ Genesis-Sphere-Ver-2/
     ├── 3d_parametric_animation.mp4    # Animated 3D parametric curve
     ├── spacetime_folding_animation.mp4 # Animated space-time folding
     └── 4d_visualization_animation.mp4 # Animated 4D visualization
+    └── cyclic_bh/                     # Cyclic cosmology and black hole outputs
+        ├── cyclic_cosmology_output.png # Cyclic cosmology visualization
+        ├── cyclic_cosmology_animation.mp4 # Cyclic cosmology animation
+        ├── bh_mapping_output.png       # Black hole mapping visualization
+        └── bh_mapping_animation.mp4    # Black hole mapping animation
 ```
 
 ### Dependency Management

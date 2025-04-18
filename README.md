@@ -257,18 +257,37 @@ python validation/astropy_validation.py --model Planck18 --compare density_evolu
 python validation/observational_validation.py --dataset supernovae --optimize
 ```
 
-### Interactive Notebooks
-For interactive exploration, check out the included Jupyter notebooks:
+## 🔄 Cyclic Cosmology and Black Hole Physics
 
-- **`simulations/genesis_sphere_notebook.ipynb`**: Basic model functions
-- **`models/simulation.ipynb`**: Advanced model exploration with interactive widgets
+Genesis-Sphere provides a mathematical framework that naturally connects cyclic universe models with black hole physics:
 
-To run any of these notebooks:
+### Correlation and Key Insights
+
+- **Temporal Flow Function**: The same equations that govern time dilation near black holes can model temporal behavior in cyclic universes
+- **Parameter Mapping**: The beta (β) parameter controls both singularity behavior and cycle transitions
+- **Phase Correspondence**: Black hole radial distance maps directly to cyclic universe phase
+
+### Related Files
+
 ```bash
-jupyter notebook models/simulation.ipynb
+# Core implementation of cyclic/black hole correspondence
+python models/cyclic_bh_mapping.py
+
+# Interactive simulations for cyclic cosmology
+python simulations/cyclic_cosmology_simulation.py --param-exploration
+
+# Varying parameters (examples)
+python simulations/cyclic_cosmology_simulation.py --omega 2.0 --beta 0.4  # Fast cycling universe
+python simulations/cyclic_cosmology_simulation.py --beta 1.5              # Strong singularity effects
+python simulations/cyclic_cosmology_simulation.py --cycle-period 20       # Long cosmic cycles
 ```
 
----
+Documentation and visualizations are saved to:
+- **`output/cyclic_bh/`**: Visualizations and animation frames
+- **`output/cyclic_bh/README.md`**: Detailed documentation and command reference
+
+For mathematically rigorous validation against black hole metrics see:
+- **`validation/black_hole_validation.py`**: Tests Genesis-Sphere time dilation against Schwarzschild and Kerr-Newman metrics
 
 ## 🔗 Getting Started
 

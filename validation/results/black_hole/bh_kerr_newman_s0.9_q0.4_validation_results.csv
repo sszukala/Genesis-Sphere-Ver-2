@@ -1,0 +1,2 @@
+model_type,correlation,mean_abs_error,mean_squared_error,max_absolute_error,alpha,beta,omega,epsilon,time_scaling,optimized,spin,charge
+kerr_newman,-0.39446640946445255,0.3384027922963252,0.15477169710764285,0.7626173854042108,0.02,2.3140737546598804,1.0,0.5,1.0,True,0.9,0.4

@@ -1,0 +1,2 @@
+model_type,correlation,mean_abs_error,mean_squared_error,alpha,beta,omega,epsilon,optimized,cyclic_period,gs_period,period_ratio
+ekpyrotic,-0.016678085670801288,0.3008362716526034,0.14976704161922189,0.05718122848686671,0.8,1.4261448544039201,0.1,True,6.283185307179586,2.197536167737182,0.34974874371859294
