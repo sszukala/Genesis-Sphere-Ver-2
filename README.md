@@ -169,7 +169,7 @@ The functions $\rho(t)$ and $Tf(t)$ can be interpreted as overlays on existing c
 
 For a comprehensive mathematical derivation and detailed explanation of these formulas, please refer to the whitepaper:
 
-**[Genesis-Sphere-Ver2.pdf](Genesis-Sphere-Ver2.pdf)** It in the main file list above
+**[genesis-sphere-ver4.pdf](genesis-sphere-ver4.pdf)** It can be found in the GitHub main directory
 
 The whitepaper contains:
 - Complete mathematical proofs
