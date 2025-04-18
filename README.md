@@ -267,6 +267,12 @@ Genesis-Sphere provides a mathematical framework that naturally connects cyclic 
 - **Parameter Mapping**: The beta (β) parameter controls both singularity behavior and cycle transitions
 - **Phase Correspondence**: Black hole radial distance maps directly to cyclic universe phase
 
+### Genesis-Sphere and Cyclic Cosmology
+The inherent time-symmetry in the Genesis-Sphere model makes it particularly suitable for modeling cyclic universes. Key observations:
+- The parameter ω directly controls oscillation frequency, mapping well to cosmic cycles
+- Genesis-Sphere naturally produces recurring density patterns without requiring custom functions
+- The model provides a simplified but effective representation of cycle dynamics
+
 ### Related Files
 
 ```bash
@@ -286,8 +292,21 @@ Documentation and visualizations are saved to:
 - **`output/cyclic_bh/`**: Visualizations and animation frames
 - **`output/cyclic_bh/README.md`**: Detailed documentation and command reference
 
-For mathematically rigorous validation against black hole metrics see:
+For mathematically rigorous validation against black hole metrics and cyclic models:
 - **`validation/black_hole_validation.py`**: Tests Genesis-Sphere time dilation against Schwarzschild and Kerr-Newman metrics
+- **`validation/cyclic_universe_validation.py`**: Validates against ekpyrotic, Tolman, and loop quantum cyclic models
+- **`validation/results/cyclic/`**: Contains validation summaries and comparison visualizations
+
+```bash
+# Run cyclic universe validation (ekpyrotic model)
+python validation/cyclic_universe_validation.py --model ekpyrotic
+
+# Run black hole validation (Schwarzschild metric)
+python validation/black_hole_validation.py --model schwarzschild
+
+# Run with parameter optimization
+python validation/cyclic_universe_validation.py --model tolman --optimize
+```
 
 ## 🔗 Getting Started
 
