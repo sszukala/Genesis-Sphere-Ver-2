@@ -154,6 +154,13 @@ Genesis-Sphere-Ver-2/
 │   ├── animation_4d_visualization.py    # 4D visualization animation
 │   ├── run_all_animations.py            # Script to run all animations
 │   └── genesis_sphere_notebook.ipynb    # Jupyter notebook version
+├── validation/                    # Model validation against cosmological data
+│   ├── README.md                  # Validation documentation
+│   ├── ned_validation.py          # NED Cosmology Calculator validation
+│   ├── astropy_validation.py      # Astropy cosmology models comparison
+│   ├── observational_validation.py # Observational datasets validation
+│   ├── datasets/                  # Directory for cosmological datasets
+│   └── results/                   # Validation results and visualizations
 └── output/                        # Generated visualization outputs
     ├── simulation_output.png          # Static visualization
     ├── genesis_sphere_animation.mp4   # Animation output
@@ -165,6 +172,33 @@ Genesis-Sphere-Ver-2/
     ├── 3d_parametric_animation.mp4    # Animated 3D parametric curve
     ├── spacetime_folding_animation.mp4 # Animated space-time folding
     └── 4d_visualization_animation.mp4 # Animated 4D visualization
+```
+
+### Dependency Management
+
+For validation against cosmological models and data, additional Python packages are required:
+
+```bash
+# Install standard dependencies
+pip install -r requirements.txt
+
+# Install additional packages for cosmological validation
+pip install astropy scipy requests beautifulsoup4
+```
+
+When working with specific datasets:
+
+1. **Supernovae data**: The Pantheon+ or Union2.1 datasets can be downloaded from their respective websites
+2. **CMB data**: Planck mission data available from the [ESA Planck Legacy Archive](https://pla.esac.esa.int/)
+3. **BAO measurements**: Available from various surveys like SDSS, BOSS, and eBOSS
+
+Example of loading standard cosmological parameters from astropy:
+
+```python
+from astropy.cosmology import Planck18
+print(f"Hubble constant (H0): {Planck18.H0.value} km/s/Mpc")
+print(f"Matter density (Omega_m): {Planck18.Om0}")
+print(f"Dark energy density (Omega_Lambda): {Planck18.Ode0}")
 ```
 
 ---

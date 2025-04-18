@@ -1,0 +1,2 @@
+cosmo_model,metrics,alpha,beta,omega,epsilon,H0,OmegaM,OmegaL,w
+NED,"{'comoving_distance': 609.464863613232, 'angular_diameter_distance': 1322.7335367224218, 'luminosity_distance': 837.9257502761697, 'age_at_z': 36.12796533318949}",0.02,0.8,1.0,0.1,60.00000000000001,0.3,0.7,-1.0
