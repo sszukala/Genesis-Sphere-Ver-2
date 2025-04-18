@@ -56,6 +56,20 @@ These scale velocity and pressure over time relative to time-density and flow mo
 
 ---
 
+## 📑 Whitepaper
+
+For a comprehensive mathematical derivation and detailed explanation of these formulas, please refer to the whitepaper:
+
+**[Genesis-Sphere-Ver2.pdf](Genesis-Sphere-Ver2.pdf)** It in the main file list above
+
+The whitepaper contains:
+- Complete mathematical proofs
+- Derivation of all equations
+- Theoretical background and cosmological implications
+- Extended numerical examples
+
+---
+
 ## 📊 Sample Visualization (Python)
 
 Use this Python script to plot the behavior of $\rho(t)$ and $Tf(t)$.
