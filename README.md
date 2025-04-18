@@ -56,6 +56,75 @@ These scale velocity and pressure over time relative to time-density and flow mo
 
 ---
 
+## 📐 Mathematical Framework
+
+The Genesis-Sphere framework defines a novel structure for space-time geometry based on time-evolving density and modulated temporal flow. This section provides a formal mathematical foundation for the model.
+
+### 🧾 Symbols and Definitions
+
+| Symbol      | Description                                      |
+|-------------|--------------------------------------------------|
+| $t$         | Time (continuous variable)                       |
+| $\omega$    | Angular frequency of sinusoidal projection       |
+| $\alpha$    | Spatial dimension expansion coefficient          |
+| $\beta$     | Temporal damping factor                          |
+| $\epsilon$  | Small constant to prevent division by zero       |
+| $\rho(t)$   | Space-time density function                      |
+| $Tf(t)$     | Temporal flow ratio function                     |
+| $v_0$       | Initial unmodulated velocity                     |
+| $p_0$       | Initial unmodulated pressure                     |
+| $v(t)$      | Time-modulated velocity                          |
+| $p(t)$      | Time-modulated pressure                          |
+
+### 🔢 Core Equations
+
+#### Time-Density Geometry Function
+
+$$
+\rho(t) = \underbrace{\frac{1}{1 + \sin^2(\omega t)}}_{S(t)} \cdot \underbrace{(1 + \alpha t^2)}_{D(t)}
+$$
+
+- $S(t)$ = Sinusoidal projection factor  
+- $D(t)$ = Dimension expansion factor
+
+This function models how space-time density evolves based on periodic compression and quadratic spatial complexity.
+
+#### Temporal Flow Ratio Function
+
+$$
+Tf(t) = \frac{1}{1 + \beta(|t| + \epsilon)}
+$$
+
+This function slows down the flow of time near $t = 0$ (e.g. singularities), and asymptotically approaches 1 as time increases.
+
+### 📈 Function Behavior & Properties
+
+- **Sinusoidal projection**: $S(t)$ is periodic, smooth, and bounded between 0 and 1. Mimics oscillatory distortions in space-time.
+- **Dimension growth**: $D(t)$ increases quadratically, reflecting spatial complexity over time.
+- **Temporal flow**:
+  - Near origin ($t \rightarrow 0$): $Tf(t) \rightarrow \frac{1}{1 + \beta \epsilon} \ll 1$
+  - At large time ($t \rightarrow \infty$): $Tf(t) \rightarrow 1$
+
+### 🧠 Assumptions
+
+- The space-time origin ($t = 0$) represents a high-density genesis point (e.g., Big Bang).
+- Sinusoidal time projection models wave-like compression or energy warping.
+- Temporal flow is independently modulated by proximity to the origin (not just gravity).
+- The universe may be symmetric or cyclic in time with respect to $t = 0$.
+
+### 🌌 Cosmological Context
+
+The model is inspired by:
+- General Relativity (Einstein's field equations)
+- Inflationary cosmology
+- Cyclic and bouncing universe theories
+
+The functions $\rho(t)$ and $Tf(t)$ can be interpreted as overlays on existing curvature models or energy-density tensors in cosmological simulations.
+
+*For more detailed mathematical derivations and extended examples, see the full [mathematical_framework.md](mathematical_framework.md) document.*
+
+---
+
 ## 📑 Whitepaper
 
 For a comprehensive mathematical derivation and detailed explanation of these formulas, please refer to the whitepaper:
