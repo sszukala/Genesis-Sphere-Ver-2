@@ -195,10 +195,65 @@ This script provides a progress bar for each animation being generated and handl
 
 ---
 
+## 📦 Model Structure and Running Simulations
+
+The Genesis-Sphere framework is organized into two main directories:
+
+### `/models` Directory
+Contains the core computational implementation and model components:
+
+- **`genesis_model.py`**: The core class implementation of the Genesis-Sphere model
+- **`run_static_simulation.py`**: Runs parameter sensitivity analysis and scenario-based simulations
+- **`animate_density.py`**: Creates animated visualizations showing parameter evolution
+
+```bash
+# From the project root directory:
+
+# Run static simulations and generate parameter sensitivity analyses
+python models/run_static_simulation.py
+
+# Create animated visualizations of model behavior
+python models/animate_density.py
+```
+
+### `/simulations` Directory
+Contains higher-level visualization scripts and notebooks:
+
+- **`genesis_sphere_simulation.py`**: Basic static visualization 
+- **`genesis_sphere_animation_fallback.py`**: Dynamic visualization with fallback for environments without FFmpeg
+- **`genesis_sphere_3d_visualization.py`**: 3D/4D visualizations of the model
+- Multiple animation scripts for specific visualization types
+
+```bash
+# From the project root directory:
+
+# Generate static visualizations
+python simulations/genesis_sphere_simulation.py
+
+# Create interactive animation (with fallback if FFmpeg is missing)
+python simulations/genesis_sphere_animation_fallback.py
+
+# Generate 3D and 4D visualizations
+python simulations/genesis_sphere_3d_visualization.py
+```
+
+### Interactive Notebooks
+For interactive exploration, check out the included Jupyter notebooks:
+
+- **`simulations/genesis_sphere_notebook.ipynb`**: Basic model functions
+- **`models/simulation.ipynb`**: Advanced model exploration with interactive widgets
+
+To run any of these notebooks:
+```bash
+jupyter notebook models/simulation.ipynb
+```
+
+---
+
 ## 🔗 Getting Started
 
 1. Clone the repository
 2. Install dependencies with `pip install -r requirements.txt`
-3. Run the simulations from the `simulations` folder
+3. Run the simulations from the appropriate folder as shown above
 
 For full setup instructions, see the `roadmap.md` file.

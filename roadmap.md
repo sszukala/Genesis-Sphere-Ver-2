@@ -26,7 +26,7 @@ This document outlines the development roadmap for the Genesis-Sphere framework,
 ### Phase 2: Implementation (Q4 2025)
 - [x] Develop visualization tools
 - [x] Create 3D/4D visualizations of model dynamics
-- [ ] Build computational models
+- [✓] Build computational models  <!-- Changed from unchecked to in-progress -->
 - [ ] Validate against existing cosmological data
 
 ### Phase 3: Application (Q1-Q2 2026)
@@ -62,33 +62,62 @@ pip install -r requirements.txt
 ```
 
 ### Running Simulations
+
+The Genesis-Sphere framework organizes code into two main directories:
+
+#### Core Model Implementation (`/models`)
+
+The `/models` directory contains the fundamental computational implementations:
+
 ```bash
-# Navigate to simulations directory
-cd simulations
+# Run from project root directory
 
-# Run the basic simulation (static image)
-python genesis_sphere_simulation.py
+# Core model parameter sensitivity analysis
+python models/run_static_simulation.py
 
-# Run the animated simulation (requires FFmpeg for video output)
-python genesis_sphere_animation.py
+# Parameter evolution animations
+python models/animate_density.py
+```
+
+#### Visualization Scripts (`/simulations`)
+
+The `/simulations` directory contains higher-level visualization scripts:
+
+```bash
+# Run from project root directory
+
+# Basic simulation (static image)
+python simulations/genesis_sphere_simulation.py
+
+# Animated simulation (requires FFmpeg for video output)
+python simulations/genesis_sphere_animation.py
 
 # Alternative animation script with fallback (works without FFmpeg)
-python genesis_sphere_animation_fallback.py
+python simulations/genesis_sphere_animation_fallback.py
 
 # Generate 3D and 4D visualizations (static images)
-python genesis_sphere_3d_visualization.py
+python simulations/genesis_sphere_3d_visualization.py
 
 # Generate animated 3D/4D visualizations (requires FFmpeg)
-python animation_3d_density.py         # Rotating 3D density surface
-python animation_3d_parametric.py      # Growing and rotating 3D parametric curve
-python animation_spacetime_folding.py  # Evolving space-time folding with parameter changes
-python animation_4d_visualization.py   # 4D visualization with pressure wave
+python simulations/animation_3d_density.py         # Rotating 3D density surface
+python simulations/animation_3d_parametric.py      # Growing and rotating 3D parametric curve
+python simulations/animation_spacetime_folding.py  # Evolving space-time folding with parameter changes
+python simulations/animation_4d_visualization.py   # 4D visualization with pressure wave
 
 # Run all animations in sequence
-python run_all_animations.py
+python simulations/run_all_animations.py
+```
 
-# For Jupyter notebook users
-jupyter notebook genesis_sphere_notebook.ipynb
+#### Interactive Notebooks
+
+For interactive exploration using Jupyter notebooks:
+
+```bash
+# Basic model notebook
+jupyter notebook simulations/genesis_sphere_notebook.ipynb
+
+# Advanced interactive model exploration with parameter sliders
+jupyter notebook models/simulation.ipynb
 ```
 
 ### Completed Visualizations
@@ -109,7 +138,12 @@ Genesis-Sphere-Ver-2/
 ├── requirements.txt               # Python dependencies
 ├── mathematical_framework.md      # Formal mathematical definitions
 ├── roadmap.md                     # This project roadmap
-├── simulations/                   # Simulation code
+├── models/                        # Core model implementation
+│   ├── genesis_model.py           # Main class implementation
+│   ├── run_static_simulation.py   # Parameter sensitivity analysis
+│   ├── animate_density.py         # Parameter evolution animations
+│   └── simulation.ipynb           # Advanced interactive notebook
+├── simulations/                   # Visualization scripts
 │   ├── genesis_sphere_simulation.py     # Basic simulation script
 │   ├── genesis_sphere_animation.py      # Animated visualization script
 │   ├── genesis_sphere_animation_fallback.py # Animation with fallback options
