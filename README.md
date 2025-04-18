@@ -150,23 +150,23 @@ python simulations/genesis_sphere_3d_visualization.py
 
 ### Animated Visualizations
 
-The following animations provide dynamic visualizations of the Genesis-Sphere model:
+The following animations provide dynamic visualizations of the Genesis-Sphere model. **Click on any image below to view/download the corresponding MP4 video file.**
 
 #### 3D Density Surface Animation
-[![3D Density Animation](output/3d_density_surface.png)](output/3d_density_animation.mp4)
-*This animation shows a rotating view of the space-time density surface, providing a comprehensive visualization of how density varies across time and frequency dimensions. The rotation gives a better understanding of the 3D structure.*
+[![3D Density Animation - Click to view video](output/3d_density_surface.png)](output/3d_density_animation.mp4)
+*This animation shows a rotating view of the space-time density surface, providing a comprehensive visualization of how density varies across time and frequency dimensions. The rotation gives a better understanding of the 3D structure. (Click image to play video)*
 
 #### 3D Parametric Curve Animation
-[![3D Parametric Animation](output/3d_parametric_curve.png)](output/3d_parametric_animation.mp4)
-*The parametric curve animation first gradually reveals the evolution path through (t, ρ, v) space, then rotates to show the three-dimensional structure from different angles. This helps visualize how the system evolves over time.*
+[![3D Parametric Animation - Click to view video](output/3d_parametric_curve.png)](output/3d_parametric_animation.mp4)
+*The parametric curve animation first gradually reveals the evolution path through (t, ρ, v) space, then rotates to show the three-dimensional structure from different angles. This helps visualize how the system evolves over time. (Click image to play video)*
 
 #### Space-Time Folding Animation
-[![Space-Time Folding Animation](output/3d_spacetime_folding.png)](output/spacetime_folding_animation.mp4)
-*This animation demonstrates how space-time folding changes as the β parameter increases. The surface becomes more sharply folded near the origin, visualizing stronger time dilation effects. The animation also rotates to show the folding from different perspectives.*
+[![Space-Time Folding Animation - Click to view video](output/3d_spacetime_folding.png)](output/spacetime_folding_animation.mp4)
+*This animation demonstrates how space-time folding changes as the β parameter increases. The surface becomes more sharply folded near the origin, visualizing stronger time dilation effects. The animation also rotates to show the folding from different perspectives. (Click image to play video)*
 
 #### 4D Visualization with Pressure Wave
-[![4D Visualization Animation](output/4d_visualization.png)](output/4d_visualization_animation.mp4)
-*The 4D animation shows an oscillating pressure wave moving through the system, visualized as changing colors in the point cloud. The animation rotates to provide different viewing angles of this 4D phenomenon.*
+[![4D Visualization Animation - Click to view video](output/4d_visualization.png)](output/4d_visualization_animation.mp4)
+*The 4D animation shows an oscillating pressure wave moving through the system, visualized as changing colors in the point cloud. The animation rotates to provide different viewing angles of this 4D phenomenon. (Click image to play video)*
 
 ## 🔄 Generating All Visualizations
 
