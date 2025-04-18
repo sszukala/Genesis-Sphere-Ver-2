@@ -35,6 +35,80 @@ This document outlines the development roadmap for the Genesis-Sphere framework,
 - [ ] Publish findings and methodology
 - [ ] Explore interdisciplinary applications
 
+## 🔁 Reverse-Engineered Formulas for Cyclic Cosmology
+
+After identifying strong alignment between the Genesis-Sphere framework and cyclic cosmological models (e.g., Steinhardt–Turok, Tolman), we reverse-engineered the original functions to better fit oscillatory, time-symmetric, and bounded universe behavior.
+
+---
+
+### ✅ Key Observations
+
+- The original $\omega$-based sinusoidal projection already maps well to cosmic cycles.
+- The original $D(t) = 1 + \alpha t^2$ and $Tf(t) = \frac{1}{1 + \beta(|t| + \epsilon)}$ were unbounded or monotonic — not ideal for modeling repeating or bouncing universes.
+- We refactored both to support **recurrence**, **bounded growth**, and **cyclic temporal modulation**.
+
+---
+
+### 📐 Revised Functions
+
+#### 🧭 Sinusoidal Projection Function (unchanged):
+
+$$
+S(t) = \frac{1}{1 + \sin^2(\omega t)}
+$$
+
+> Still effective for modeling oscillatory projection and smooth time-space modulation.
+
+---
+
+#### 🔁 Modified Dimension Expansion Function:
+
+$$
+D_{\text{cyc}}(t) = \frac{1 + \alpha t^2}{1 + \gamma t^4}
+$$
+
+> Bounded, symmetric, and avoids runaway inflation. Models entropy or spatial degrees of freedom with damping.
+
+---
+
+#### 🔮 Modified Temporal Flow Function:
+
+$$
+Tf_{\text{cyc}}(t) = \frac{\cos^2(\omega t)}{1 + \beta t^2}
+$$
+
+> Oscillatory and bounded. Reflects recurring time distortions instead of one-time slowdowns.
+
+---
+
+#### 🧪 New Time-Density Function:
+
+$$
+\rho_{\text{cyc}}(t) = S(t) \cdot D_{\text{cyc}}(t)
+$$
+
+> Naturally produces smooth, recurring density patterns — ideal for simulating cycles or "bounces" in cosmological time.
+
+---
+
+### 📊 Visual Comparison Summary
+
+- **ρ(t)**: Revised version shows smooth oscillating density vs. original ever-increasing form.
+- **Tf(t)**: Now evolves cyclically instead of decaying once near \( t = 0 \).
+- **D(t)**: Prevents unbounded growth while preserving expansion-like behavior.
+- **S(t)**: Remains effective and elegant for cyclical modulation.
+
+---
+
+### 🚧 Next Steps
+
+- [ ] Replace original functions in codebase with new `*_cyc(t)` variants.
+- [ ] Add toggle between inflationary and cyclic models.
+- [ ] Run simulations to analyze entropy buildup per cycle.
+- [ ] Compare to Steinhardt–Turok cyclic energy curves.
+
+---
+
 ## 📚 Resources Needed
 
 - [ ] Computational resources for simulations
