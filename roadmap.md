@@ -26,7 +26,7 @@ This document outlines the development roadmap for the Genesis-Sphere framework,
 ### Phase 2: Implementation (Q4 2025)
 - [x] Develop visualization tools
 - [x] Create 3D/4D visualizations of model dynamics
-- [✓] Build computational models  <!-- Changed from unchecked to in-progress -->
+- [✓] Build computational models 
 - [ ] Validate against existing cosmological data
 
 ### Phase 3: Application (Q1-Q2 2026)
