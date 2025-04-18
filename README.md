@@ -124,6 +124,61 @@ python simulations/genesis_sphere_3d_visualization.py
 
 ![3D Surface Example](output/3d_density_surface.png)
 
+## 📸 Visualization Gallery
+
+### Static Visualizations
+
+#### 2D Function Plots
+![Basic Simulation Output](output/simulation_output.png)
+*Basic simulation output showing the core Genesis-Sphere functions: sinusoidal projection, dimension expansion, space-time density, temporal flow, and derived quantities (velocity and pressure).*
+
+#### 3D Surface Plot
+![3D Density Surface](output/3d_density_surface.png)
+*3D visualization of space-time density (ρ) as a function of time (t) and frequency (ω). The peaks and valleys represent regions of high and low density in the model's space-time fabric.*
+
+#### 3D Parametric Curve
+![3D Parametric Curve](output/3d_parametric_curve.png)
+*This 3D parametric curve traces the evolution of the system through space-time. The path shows how density (ρ) and velocity (v) change across time (t), revealing the trajectory of physical quantities through the model universe.*
+
+#### 4D Visualization
+![4D Visualization](output/4d_visualization.png)
+*A 4D visualization using color as the fourth dimension. The 3D scatter plot shows points in (t, ρ, v) space, with color representing pressure. This allows us to visualize four variables simultaneously.*
+
+#### Space-Time Folding
+![Space-Time Folding](output/3d_spacetime_folding.png)
+*Visualization of space-time folding near a singularity. This surface represents how temporal distortion manifests in spatial dimensions, creating a "warped" geometry that affects the flow of time.*
+
+### Animated Visualizations
+
+The following animations provide dynamic visualizations of the Genesis-Sphere model. Click on the thumbnails to view the animations in the GitHub repository.
+
+#### 3D Density Surface Animation
+[![3D Density Animation](output/3d_density_surface.png)](output/3d_density_animation.mp4)
+*This animation shows a rotating view of the space-time density surface, providing a comprehensive visualization of how density varies across time and frequency dimensions. The rotation gives a better understanding of the 3D structure.*
+
+#### 3D Parametric Curve Animation
+[![3D Parametric Animation](output/3d_parametric_curve.png)](output/3d_parametric_animation.mp4)
+*The parametric curve animation first gradually reveals the evolution path through (t, ρ, v) space, then rotates to show the three-dimensional structure from different angles. This helps visualize how the system evolves over time.*
+
+#### Space-Time Folding Animation
+[![Space-Time Folding Animation](output/3d_spacetime_folding.png)](output/spacetime_folding_animation.mp4)
+*This animation demonstrates how space-time folding changes as the β parameter increases. The surface becomes more sharply folded near the origin, visualizing stronger time dilation effects. The animation also rotates to show the folding from different perspectives.*
+
+#### 4D Visualization with Pressure Wave
+[![4D Visualization Animation](output/4d_visualization.png)](output/4d_visualization_animation.mp4)
+*The 4D animation shows an oscillating pressure wave moving through the system, visualized as changing colors in the point cloud. The animation rotates to provide different viewing angles of this 4D phenomenon.*
+
+## 🔄 Generating All Visualizations
+
+To generate all static and animated visualizations at once, use the provided script:
+
+```bash
+# Generates all animations with progress tracking
+python simulations/run_all_animations.py
+```
+
+This script provides a progress bar for each animation being generated and handles the sequential processing of all visualization types.
+
 ---
 
 ## 🔗 Getting Started
