@@ -523,11 +523,11 @@ python validation/celestial_correlation_validation.py --optimize
 
 #### Cyclic-Optimized Parameters Results
 
-**Hubble Constant Correlation**: Using cyclic-optimized parameters, the Genesis-Sphere model achieved a **-25.3%** correlation with historical H₀ measurements. While this correlation is weaker than expected, different parameter configurations yield better results as shown in the comparison table above.
+**Hubble Constant Correlation**: Using cyclic-optimized parameters, the Genesis-Sphere model achieved a **-25.3%** correlation with historical H₀ measurements from published astronomical sources. While this correlation is weaker than expected, different parameter configurations yield better results as shown in the comparison table above.
 
 ![H₀ Correlation](validation/results/celestial_correlation/h0_correlation.png)
 
-**Type Ia Supernovae Distance Modulus**: With the cyclic-optimized parameters, the model achieved an R² value of **-542.5%** when fitting Type Ia supernovae data, indicating further refinement is needed to better match the observed distance-redshift relation. Metrics include a reduced χ² of 2409.55 and a mean absolute error of 5.83 mag.
+**Type Ia Supernovae Distance Modulus**: With the cyclic-optimized parameters, the model achieved an R² value of **-542.5%** when fitting Type Ia supernovae observational data, indicating further refinement is needed to better match the observed distance-redshift relation. Metrics include a reduced χ² of 2409.55 and a mean absolute error of 5.83 mag.
 
 ![SNe Fit](validation/results/celestial_correlation/sne_fit.png)
 
@@ -538,9 +538,9 @@ python validation/celestial_correlation_validation.py --optimize
 #### Methodology and Conclusions
 
 This validation tested the model against three key astronomical datasets:
-1. **Hubble Constant Measurements**: Historic H₀ measurements from 1927-2022
-2. **Type Ia Supernovae**: Distance modulus measurements from standard cosmology datasets
-3. **Baryon Acoustic Oscillations**: Sound horizon scale measurements across multiple redshifts
+1. **Hubble Constant Measurements**: Historic H₀ measurements from 1927-2022, including values from the HST Key Project, SH0ES team, and Planck mission
+2. **Type Ia Supernovae**: Distance modulus measurements from the Pantheon+ dataset
+3. **Baryon Acoustic Oscillations**: Sound horizon scale measurements from BOSS, eBOSS, and other major surveys
 
 The current analysis shows **partial alignment** with astronomical data. While BAO measurements show particularly strong detection effects, other datasets suggest further refinement is needed. Continued exploration of parameter optimization approaches will help reconcile the theoretical strengths with observational data.
 
@@ -553,6 +553,33 @@ python validation/celestial_correlation_validation.py --omega 2.0 --beta 1.2
 
 # Run with data-only optimization
 python validation/celestial_correlation_validation.py --optimize
+```
+
+## 🧠 Validation Datasets for Whitepaper
+
+Multiple validation scripts analyze real astronomical datasets to verify Genesis-Sphere's predictions. The results from these validations are referenced in the comprehensive whitepaper.
+
+### Key Validation Files Using Datasets
+
+The following validation scripts utilize datasets stored in the `validation/datasets` directory:
+
+1. **comprehensive_validation.py** - Uses Type Ia supernovae data, BAO measurements, CMB priors, and BBN abundances to comprehensively validate the model
+2. **observational_validation.py** - Tests model predictions against astronomical observations
+3. **cyclic_behavior_validation.py** - Validates cyclic behavior characteristics
+4. **celestial_correlation_validation.py** - Analyzes correlations with historical H₀ measurements, SN data, and BAO signals
+5. **inflationary_validation.py** - Tests compatibility with inflationary models
+6. **black_hole_validation.py** - Validates time dilation effects around black holes
+7. **astropy_validation.py** - Compares with standard Planck18/WMAP9 cosmologies
+8. **ned_validation.py** - Validates against the NED cosmology calculator
+
+All dataset analyses are documented in `validation/validation_datasets_report.md`, and the results are incorporated into the Genesis-Sphere whitepaper as empirical evidence supporting the theoretical framework.
+
+```bash
+# Generate overview of datasets and validation files
+python validation/validation_files_overview.py
+
+# Run dataset validation and generate report
+python validation/comprehensive_validation.py
 ```
 
 ## 🔗 Getting Started

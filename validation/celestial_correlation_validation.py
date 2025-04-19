@@ -76,6 +76,8 @@ def load_supernovae_data():
     """
     # Try multiple possible filenames
     possible_files = [
+        os.path.join(datasets_dir, 'SNe_Hubble_Law.csv'),  # Kaggle Hubble Law dataset
+        os.path.join(datasets_dir, 'SNe_MCMC_Analysis.csv'),  # Kaggle MCMC analysis
         os.path.join(datasets_dir, 'SNe_Pantheon_Plus_simplified.csv'),
         os.path.join(datasets_dir, 'SNe_Union2.1.csv'),
         os.path.join(datasets_dir, 'SNe_gold_sample.csv')
@@ -91,10 +93,21 @@ def load_supernovae_data():
             except Exception as e:
                 print(f"Error loading {file_path}: {e}")
     
-    # If no existing file found, create a synthetic dataset
-    print("No supernovae data file found. Creating synthetic dataset...")
-    output_file = os.path.join(datasets_dir, 'SNe_synthetic.csv')
+    # If no file exists, try to download data
+    try:
+        from validation.download_datasets import download_supernovae_data
+        file_path = download_supernovae_data()
+        try:
+            df = pd.read_csv(file_path)
+            print(f"Loaded newly downloaded supernovae data from {file_path}")
+            return df
+        except Exception as e:
+            print(f"Error loading downloaded data {file_path}: {e}")
+    except ImportError:
+        print("Could not import download_datasets module")
     
+    # Fall back to existing code that uses H0 data or generates synthetic data
+    print("No valid supernovae data found or could be created. Using existing method.")
     # Create a synthetic sample with realistic distribution
     z_values = np.concatenate([
         np.linspace(0.01, 0.1, 20),  # More sampling at low z
@@ -137,6 +150,7 @@ def load_supernovae_data():
     })
     
     # Save to file
+    output_file = os.path.join(datasets_dir, 'SNe_synthetic.csv')
     df.to_csv(output_file, index=False)
     print(f"Created synthetic supernovae dataset with {len(df)} objects")
     
@@ -144,13 +158,38 @@ def load_supernovae_data():
 
 def load_bao_data():
     """
-    Load Baryon Acoustic Oscillation measurements
+    Load Baryon Acoustic Oscillation data
     
     Returns:
     --------
     DataFrame
-        BAO data with columns 'z', 'rd', 'rd_err'
+        BAO data with columns 'z', 'rd', 'rd_err', 'survey'
     """
+    # Try to load from SDSS dataset first
+    sdss_bao_file = os.path.join(datasets_dir, 'BAO_SDSS_DR16Q.csv')
+    if os.path.exists(sdss_bao_file):
+        try:
+            df = pd.read_csv(sdss_bao_file)
+            print(f"Loaded BAO data from SDSS DR16Q: {sdss_bao_file}")
+            return df
+        except Exception as e:
+            print(f"Error loading {sdss_bao_file}: {e}")
+    
+    # Try to download BAO data
+    try:
+        from validation.download_datasets import download_bao_data
+        file_path = download_bao_data()
+        try:
+            df = pd.read_csv(file_path)
+            print(f"Loaded newly downloaded BAO data from {file_path}")
+            return df
+        except Exception as e:
+            print(f"Error loading downloaded BAO data {file_path}: {e}")
+    except ImportError:
+        print("Could not import download_datasets module")
+    
+    # Fall back to existing code with literature compilation
+    print("No SDSS BAO data found. Using literature compilation.")
     bao_file = os.path.join(datasets_dir, 'BAO_compilation.csv')
     
     # Check if file exists

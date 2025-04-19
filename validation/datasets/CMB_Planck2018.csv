@@ -1,8 +1,11 @@
-parameter,value,error
-Omega_m,0.315,0.007
-Omega_b,0.0493,0.0019
-h,0.674,0.005
-n_s,0.965,0.004
-sigma_8,0.811,0.006
-tau,0.054,0.007
-A_s,2.1e-09,3e-11
+parameter,value,error,description
+Omega_m,0.315,0.007,Matter density parameter
+Omega_b,0.0493,0.0019,Baryon density parameter
+h,0.674,0.005,Hubble constant / 100 km/s/Mpc
+n_s,0.965,0.004,Scalar spectral index
+sigma_8,0.811,0.006,Matter fluctuation amplitude
+tau,0.054,0.007,Reionization optical depth
+A_s,2.1e-09,3e-11,Scalar fluctuation amplitude
+Omega_k,0.0007,0.0019,Spatial curvature parameter
+w,-1.03,0.03,Dark energy equation of state
+r_0.05,0.1,0.06,Tensor-to-scalar ratio

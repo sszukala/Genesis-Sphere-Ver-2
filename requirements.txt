@@ -29,3 +29,8 @@ ffmpeg-python>=0.2.0
 # Cosmological model validation dependencies
 astropy>=5.0.0  # For standard cosmological models
 beautifulsoup4>=4.9.0  # For parsing web content when needed
+
+# Added requirements for real astronomical datasets
+kagglehub>=0.2.0
+kaggle>=1.5.12  # Added official kaggle package
+astropy>=5.0.0

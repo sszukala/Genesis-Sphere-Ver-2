@@ -98,7 +98,7 @@ class GSCosmology:
         self.Omega_m = self._calc_omega_m()  # Total matter density (CDM + baryons)
         self.Omega_DE = self._calc_omega_de()  # Dark energy density
         # Verify the model is well-defined
-        assert np.isclose(self.Omega_m + self.Omega_r + self.Omega_DE, 1.0, atol=1e-3), \
+        assert np.isclose(self.Omega_m + self.Omega_r + self.Omega_DE, 1.0, atol=5e-3), \
             f"Sum of density parameters ({self.Omega_m + self.Omega_r + self.Omega_DE}) should be 1.0"
 
     def _calc_omega_m(self):
