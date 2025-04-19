@@ -521,17 +521,17 @@ python validation/celestial_correlation_validation.py --omega 2.0 --beta 1.2
 python validation/celestial_correlation_validation.py --optimize
 ```
 
-#### Overall Assessment (Initial Data-Only Optimization)
+#### Cyclic-Optimized Parameters Results
 
-**Hubble Constant Correlation**: The Genesis-Sphere model achieved a **34.5%** correlation with historical H₀ measurements, providing evidence that the model's cyclical behavior aligns with observed variations in the cosmic expansion rate. The correlation suggests that further parameter refinement may improve capture of observed H₀ variation patterns.
+**Hubble Constant Correlation**: Using cyclic-optimized parameters, the Genesis-Sphere model achieved a **-25.3%** correlation with historical H₀ measurements. While this correlation is weaker than expected, different parameter configurations yield better results as shown in the comparison table above.
 
 ![H₀ Correlation](validation/results/celestial_correlation/h0_correlation.png)
 
-**Type Ia Supernovae Distance Modulus**: With an R² value of **-277.5%** when fitting Type Ia supernovae data, the model requires additional refinement to better match the observed distance-redshift relation. Current metrics include a reduced χ² of 1420.64 and a mean absolute error of 4.42 mag.
+**Type Ia Supernovae Distance Modulus**: With the cyclic-optimized parameters, the model achieved an R² value of **-542.5%** when fitting Type Ia supernovae data, indicating further refinement is needed to better match the observed distance-redshift relation. Metrics include a reduced χ² of 2409.55 and a mean absolute error of 5.83 mag.
 
 ![SNe Fit](validation/results/celestial_correlation/sne_fit.png)
 
-**Baryon Acoustic Oscillation Signal**: Analysis shows a strong detection effect size of **111.47** at redshift z~2.3, indicating that Genesis-Sphere's cycle transitions have a statistically significant influence on BAO measurements. This robust detection aligns with theoretical predictions that cycle transitions would leave observable imprints on the cosmic sound horizon scale.
+**Baryon Acoustic Oscillation Signal**: Analysis shows a strong detection effect size of **27.58** at redshift z~2.3, indicating that Genesis-Sphere's cycle transitions have a statistically significant influence on BAO measurements. This robust detection aligns with theoretical predictions that cycle transitions would leave observable imprints on the cosmic sound horizon scale.
 
 ![BAO Detection](validation/results/celestial_correlation/bao_detection.png)
 
@@ -542,16 +542,16 @@ This validation tested the model against three key astronomical datasets:
 2. **Type Ia Supernovae**: Distance modulus measurements from standard cosmology datasets
 3. **Baryon Acoustic Oscillations**: Sound horizon scale measurements across multiple redshifts
 
-The current analysis shows **partial alignment** with astronomical data. While BAO measurements show particularly strong detection effects, other datasets suggest further refinement is needed. Recommendations include exploring the ω=4.17 frequency region more thoroughly and conducting perturbation analysis around these optimized parameters.
+The current analysis shows **partial alignment** with astronomical data. While BAO measurements show particularly strong detection effects, other datasets suggest further refinement is needed. Continued exploration of parameter optimization approaches will help reconcile the theoretical strengths with observational data.
 
 [View the full celestial correlation validation report](validation/results/celestial_correlation/celestial_correlation_summary.md)
 
 To run the celestial correlation validation:
 ```bash
-# Run basic celestial correlation validation
-python validation/celestial_correlation_validation.py
+# Run celestial correlation with cyclic-optimized parameters 
+python validation/celestial_correlation_validation.py --omega 2.0 --beta 1.2
 
-# Run with parameter optimization
+# Run with data-only optimization
 python validation/celestial_correlation_validation.py --optimize
 ```
 
