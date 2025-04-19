@@ -1,0 +1,16 @@
+year,H0,H0_err,method
+1927,500.0,50.0,Hubble original
+1956,180.0,30.0,Humason et al.
+1958,75.0,25.0,Allan Sandage
+1968,75.0,15.0,Sandage & Tammann
+1974,55.0,7.0,Sandage & Tammann
+1995,73.0,10.0,HST Key Project early
+2001,72.0,8.0,HST Key Project final
+2011,73.8,2.4,Riess et al. (SH0ES)
+2013,67.3,1.2,Planck 2013
+2015,70.6,2.6,Bennett et al.
+2016,73.2,1.7,Riess et al.
+2018,67.4,0.5,Planck 2018
+2019,74.0,1.4,Riess et al.
+2020,73.5,1.4,SH0ES
+2022,73.04,1.04,SH0ES

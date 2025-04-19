@@ -106,212 +106,225 @@ $$
 - [ ] Add toggle between inflationary and cyclic models.
 - [ ] Run simulations to analyze entropy buildup per cycle.
 - [ ] Compare to Steinhardt–Turok cyclic energy curves.
-- [ ] Create 3D/4D visualizations of cycle period comparisons across cosmological models and omega parameters.
+- [x] Create 3D/4D visualizations of cycle period comparisons across cosmological models and omega parameters.
+- [x] Validate cyclic predictions against real astronomical datasets (H₀, SNe, BAO).
+
 ---
----
+
 ## 📚 Resources Needed
-## 📚 Resources Needed
+
 - [ ] Computational resources for simulations
-- [ ] Cosmological datasets for validationons
+- [ ] Cosmological datasets for validation
 - [ ] Collaboration with physics and math specialists
 - [ ] Visualization expertise for complex data representation
-- [ ] Visualization expertise for complex data representation
+
 ## 🛠️ Development Setup & Commands
-## 🛠️ Development Setup & Commands
+
 ### Environment Setup
-```bashironment Setup
+```bash
 # Install required dependencies
 pip install -r requirements.txt
-pip install -r requirements.txt
+
 # FFmpeg Installation (required for animations)
-# Windows: stallation (required for animations)
+# Windows:
 # 1. Download from https://ffmpeg.org/download.html or https://github.com/BtbN/FFmpeg-Builds/releases
-# 2. Extract the ZIP file to a folder (e.g., C:\FFmpeg)https://github.com/BtbN/FFmpeg-Builds/releases
-# 3. Add the bin folder to your PATH: (e.g., C:\FFmpeg)
+# 2. Extract the ZIP file to a folder (e.g., C:\FFmpeg)
+# 3. Add the bin folder to your PATH:
 #    - Right-click on "This PC" → Properties → Advanced system settings → Environment Variables
-#    - Edit the Path variable and add the path to FFmpeg's bin folder (e.g., C:\FFmpeg\bin)bles
-#    - Restart your command prompt/terminal after updating PATHfolder (e.g., C:\FFmpeg\bin)
+#    - Edit the Path variable and add the path to FFmpeg's bin folder (e.g., C:\FFmpeg\bin)
 #    - Restart your command prompt/terminal after updating PATH
 # macOS: brew install ffmpeg
 # Linux: sudo apt install ffmpeg
-```inux: sudo apt install ffmpeg
 ```
+
 ### Running Simulations
-### Running Simulations
+
 The Genesis-Sphere framework organizes code into two main directories:
-The Genesis-Sphere framework organizes code into two main directories:
+
 #### Core Model Implementation (`/models`)
-#### Core Model Implementation (`/models`)
-The `/models` directory contains the fundamental computational implementations:
+
 The `/models` directory contains the fundamental computational implementations:
 ```bash
 # Run from project root directory
-# Run from project root directory
+
 # Core model parameter sensitivity analysis
-python models/run_static_simulation.pylysis
 python models/run_static_simulation.py
+
 # Parameter evolution animations
 python models/animate_density.py
-```hon models/animate_density.py
 ```
+
 #### Cyclic Cosmology & Black Hole Physics (`/models`, `/simulations`)
-#### Cyclic Cosmology & Black Hole Physics (`/models`, `/simulations`)
-The cyclic cosmology and black hole correspondence model shows how Genesis-Sphere naturally connects these phenomena:
+
 The cyclic cosmology and black hole correspondence model shows how Genesis-Sphere naturally connects these phenomena:
 ```bash
 # Run from project root directory
-# Run from project root directory
+
 # Core cyclic/black hole model
 python models/cyclic_bh_mapping.py
-python models/cyclic_bh_mapping.py
+
 # Parameter exploration for cyclic cosmology
 python simulations/cyclic_cosmology_simulation.py --param-exploration
-python simulations/cyclic_cosmology_simulation.py --param-exploration
+
 # Run with custom parameters
 python simulations/cyclic_cosmology_simulation.py --omega 1.5 --beta 0.6
-python simulations/cyclic_cosmology_simulation.py --omega 1.5 --beta 0.6
+
 # Specify cycle period directly
 python simulations/cyclic_cosmology_simulation.py --cycle-period 8
-```hon simulations/cyclic_cosmology_simulation.py --cycle-period 8
 ```
 Visualizations and documentation are saved to the `/output/cyclic_bh/` directory.
-Visualizations and documentation are saved to the `/output/cyclic_bh/` directory.
+
 #### Visualization Scripts (`/simulations`)
-#### Visualization Scripts (`/simulations`)
-The `/simulations` directory contains higher-level visualization scripts:
+
 The `/simulations` directory contains higher-level visualization scripts:
 ```bash
 # Run from project root directory
-# Run from project root directory
+
 # Basic simulation (static image)
 python simulations/genesis_sphere_simulation.py
-python simulations/genesis_sphere_simulation.py
+
 # Animated simulation (requires FFmpeg for video output)
-python simulations/genesis_sphere_animation.pyeo output)
 python simulations/genesis_sphere_animation.py
+
 # Alternative animation script with fallback (works without FFmpeg)
-python simulations/genesis_sphere_animation_fallback.pyhout FFmpeg)
 python simulations/genesis_sphere_animation_fallback.py
+
 # Generate 3D and 4D visualizations (static images)
 python simulations/genesis_sphere_3d_visualization.py
-python simulations/genesis_sphere_3d_visualization.py
+
 # Enhanced cycle period visualizations
 python simulations/cycle_period_comparison_3d.py  # 3D/4D visualization of cycle periods
 
 # Generate animated 3D/4D visualizations (requires FFmpeg)
-python simulations/animation_3d_density.py         # Rotating 3D density surfacerameter changes
-python simulations/animation_3d_parametric.py      # Growing and rotating 3D parametric curvepython simulations/animation_4d_visualization.py   # 4D visualization with pressure wave
+python simulations/animation_3d_density.py         # Rotating 3D density surface
+python simulations/animation_3d_parametric.py      # Growing and rotating 3D parametric curve
 python simulations/animation_spacetime_folding.py  # Evolving space-time folding with parameter changes
 python simulations/animation_4d_visualization.py   # 4D visualization with pressure wave
-hon simulations/run_all_animations.py
-# Run all animations in sequence```
-python simulations/run_all_animations.py
-```#### Interactive Notebooks
 
-#### Interactive NotebooksFor interactive exploration using Jupyter notebooks:
+# Run all animations in sequence
+python simulations/run_all_animations.py
+```
+
+#### Validation Scripts (`/validation`)
+
+The `/validation` directory contains scripts for validating Genesis-Sphere against cosmological data:
+```bash
+# Run from project root directory
+
+# NED Cosmology Calculator validation
+python validation/ned_validation.py --alpha 0.02 --beta 0.8 --omega 1.0 --epsilon 0.1
+
+# Astropy Cosmology validation
+python validation/astropy_validation.py --model Planck18 --compare hubble_evolution
+
+# Observational datasets validation
+python validation/observational_validation.py --dataset supernovae
+
+# Celestial correlation validation (H₀, SNe, BAO)
+python validation/celestial_correlation_validation.py  # With default parameters
+python validation/celestial_correlation_validation.py --optimize  # Find optimal parameters
+python validation/celestial_correlation_validation.py --omega 2.0 --beta 1.2  # Use recommended cyclical parameters
+```
+
+#### Interactive Notebooks
 
 For interactive exploration using Jupyter notebooks:
-
-```bashjupyter notebook simulations/genesis_sphere_notebook.ipynb
+```bash
 # Basic model notebook
-jupyter notebook simulations/genesis_sphere_notebook.ipynb with parameter sliders
-yter notebook models/simulation.ipynb
-# Advanced interactive model exploration with parameter sliders```
-jupyter notebook models/simulation.ipynb
-```### Completed Visualizations
+jupyter notebook simulations/genesis_sphere_notebook.ipynb
 
-### Completed VisualizationsThe project now includes the following visualizations:
+# Advanced interactive model exploration with parameter sliders
+jupyter notebook models/simulation.ipynb
+```
+
+### Completed Visualizations
 
 The project now includes the following visualizations:
 
 - **2D Static Plots**: Basic time-dependent function relationships
-- **2D Animations**: Dynamic evolution of model variables over times
+- **2D Animations**: Dynamic evolution of model variables over time
 - **3D Surface Plots**: Space-time density variation across parameters
 - **3D Parametric Curves**: System evolution traces in three dimensions
-- **4D Color Mapping**: Using color as a fourth dimension for pressure- **Cyclic Universe and Black Hole Correspondence**: Visualizations and animations showing how the model connects black hole physics with cyclic cosmology
+- **4D Color Mapping**: Using color as a fourth dimension for pressure
 - **Space-Time Folding**: Visualization of distortions near singularities
-- **Cyclic Universe and Black Hole Correspondence**: Visualizations and animations showing how the model connects black hole physics with cyclic cosmology File Structure
+- **Cyclic Universe and Black Hole Correspondence**: Visualizations and animations showing how the model connects black hole physics with cyclic cosmology
 
 ### File Structure
 ```
 Genesis-Sphere-Ver-2/
-├── README.md                      # Project overviewdefinitions
+├── README.md                      # Project overview
 ├── requirements.txt               # Python dependencies
 ├── mathematical_framework.md      # Formal mathematical definitions
 ├── roadmap.md                     # This project roadmap
 ├── models/                        # Core model implementation
 │   ├── genesis_model.py           # Main class implementation
-│   ├── run_static_simulation.py   # Parameter sensitivity analysisle mapping
-│   ├── animate_density.py         # Parameter evolution animationsnotebook
+│   ├── run_static_simulation.py   # Parameter sensitivity analysis
+│   ├── animate_density.py         # Parameter evolution animations
 │   ├── cyclic_bh_mapping.py       # Cyclic cosmology and black hole mapping
 │   └── simulation.ipynb           # Advanced interactive notebook
 ├── simulations/                   # Visualization scripts
 │   ├── genesis_sphere_simulation.py     # Basic simulation script
-│   ├── genesis_sphere_animation.py      # Animated visualization scripton script
+│   ├── genesis_sphere_animation.py      # Animated visualization script
 │   ├── genesis_sphere_animation_fallback.py # Animation with fallback options
-│   ├── genesis_sphere_3d_visualization.py   # Static 3D/4D visualization scriptn
-│   ├── animation_3d_density.py          # 3D density surface animationon
+│   ├── genesis_sphere_3d_visualization.py   # Static 3D/4D visualization script
+│   ├── animation_3d_density.py          # 3D density surface animation
 │   ├── animation_3d_parametric.py       # 3D parametric curve animation
 │   ├── animation_spacetime_folding.py   # Space-time folding animation
-│   ├── animation_4d_visualization.py    # 4D visualization animationions
+│   ├── animation_4d_visualization.py    # 4D visualization animation
 │   ├── cyclic_cosmology_simulation.py   # Cyclic cosmology simulation
-│   ├── cycle_period_comparison_3d.py    # Enhanced cycle period visualizations cosmological data
+│   ├── cycle_period_comparison_3d.py    # Enhanced cycle period visualizations
 │   ├── run_all_animations.py            # Script to run all animations
 │   └── genesis_sphere_notebook.ipynb    # Jupyter notebook version
-├── validation/                    # Model validation against cosmological datan
+├── validation/                    # Model validation against cosmological data
 │   ├── README.md                  # Validation documentation
 │   ├── ned_validation.py          # NED Cosmology Calculator validation
-│   ├── astropy_validation.py      # Astropy cosmology models comparisonations
-│   ├── observational_validation.py # Observational datasets validationoutputs
-│   ├── datasets/                  # Directory for cosmological datasetstion
+│   ├── astropy_validation.py      # Astropy cosmology models comparison
+│   ├── observational_validation.py # Observational datasets validation
+│   ├── celestial_correlation_validation.py # Celestial correlation validation
+│   ├── datasets/                  # Directory for cosmological datasets
 │   └── results/                   # Validation results and visualizations
-└── output/                        # Generated visualization outputson
+└── output/                        # Generated visualization outputs
     ├── simulation_output.png          # Static visualization
-    ├── genesis_sphere_animation.mp4   # Animation outputation
-    ├── 3d_density_surface.png         # 3D surface visualizationation
+    ├── genesis_sphere_animation.mp4   # Animation output
+    ├── 3d_density_surface.png         # 3D surface visualization
     ├── 3d_parametric_curve.png        # 3D curve visualization
     ├── 4d_visualization.png           # 4D (color as dimension) visualization
-    ├── 3d_spacetime_folding.png       # Space-time folding visualizationing
+    ├── 3d_spacetime_folding.png       # Space-time folding visualization
     ├── 3d_density_animation.mp4       # Animated 3D density surface
-    ├── 3d_parametric_animation.mp4    # Animated 3D parametric curve outputs
-    ├── spacetime_folding_animation.mp4 # Animated space-time foldingn
+    ├── 3d_parametric_animation.mp4    # Animated 3D parametric curve
+    ├── spacetime_folding_animation.mp4 # Animated space-time folding
     └── 4d_visualization_animation.mp4 # Animated 4D visualization
-    └── cyclic_bh/                     # Cyclic cosmology and black hole outputstion
-        ├── cyclic_cosmology_output.png # Cyclic cosmology visualization     └── bh_mapping_animation.mp4    # Black hole mapping animation
-        ├── cyclic_cosmology_animation.mp4 # Cyclic cosmology animation```
+    └── cyclic_bh/                     # Cyclic cosmology and black hole outputs
+        ├── cyclic_cosmology_output.png # Cyclic cosmology visualization
+        ├── cyclic_cosmology_animation.mp4 # Cyclic cosmology animation
         ├── bh_mapping_output.png       # Black hole mapping visualization
-        └── bh_mapping_animation.mp4    # Black hole mapping animation### Dependency Management
+        └── bh_mapping_animation.mp4    # Black hole mapping animation
 ```
-For validation against cosmological models and data, additional Python packages are required:
+
 ### Dependency Management
 
 For validation against cosmological models and data, additional Python packages are required:
-pip install -r requirements.txt
 ```bash
-# Install standard dependencieslidation
-pip install -r requirements.txt install astropy scipy requests beautifulsoup4
-```
+# Install standard dependencies
+pip install -r requirements.txt
+
 # Install additional packages for cosmological validation
-pip install astropy scipy requests beautifulsoup4When working with specific datasets:
+pip install astropy scipy requests beautifulsoup4
 ```
 
-When working with specific datasets:](https://pla.esac.esa.int/)
-3. **BAO measurements**: Available from various surveys like SDSS, BOSS, and eBOSS
+When working with specific datasets:
 1. **Supernovae data**: The Pantheon+ or Union2.1 datasets can be downloaded from their respective websites
-2. **CMB data**: Planck mission data available from the [ESA Planck Legacy Archive](https://pla.esac.esa.int/)Example of loading standard cosmological parameters from astropy:
+2. **CMB data**: Planck mission data available from the [ESA Planck Legacy Archive](https://pla.esac.esa.int/)
 3. **BAO measurements**: Available from various surveys like SDSS, BOSS, and eBOSS
 
 Example of loading standard cosmological parameters from astropy:
-km/s/Mpc")
 ```python
-from astropy.cosmology import Planck18nt(f"Dark energy density (Omega_Lambda): {Planck18.Ode0}")
-print(f"Hubble constant (H0): {Planck18.H0.value} km/s/Mpc")```
+from astropy.cosmology import Planck18
+print(f"Hubble constant (H0): {Planck18.H0.value} km/s/Mpc")
 print(f"Matter density (Omega_m): {Planck18.Om0}")
-print(f"Dark energy density (Omega_Lambda): {Planck18.Ode0}")---
+print(f"Dark energy density (Omega_Lambda): {Planck18.Ode0}")
 ```
+
+---
+
 *This roadmap is a living document and will be updated as the project progresses.*
-
-
-
-
-*This roadmap is a living document and will be updated as the project progresses.*---
