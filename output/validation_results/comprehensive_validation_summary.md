@@ -1,28 +1,28 @@
 # Genesis-Sphere Comprehensive Validation Report
 
-**Date**: 2025-04-18 18:55:38
+**Date**: 2025-04-19 06:47:46
 
 ## Model Parameters
 
 - **Alpha (α)**: 0.0200 - *Spatial dimension expansion coefficient*
-- **Beta (β)**: 0.8000 - *Temporal damping factor*
-- **Omega (ω)**: 1.0000 - *Angular frequency*
+- **Beta (β)**: 1.2000 - *Temporal damping factor*
+- **Omega (ω)**: 2.0000 - *Angular frequency*
 - **Epsilon (ε)**: 0.1000 - *Zero-prevention constant*
 
 ## Overall Assessment
 
-- **Total χ²**: 1432471658015.73
+- **Total χ²**: 1541601477853.81
 - **Total Degrees of Freedom**: 108
-- **Combined Reduced χ²**: 13263626463.11
+- **Combined Reduced χ²**: 14274087757.91
 - **Combined p-value**: 0.00e+00
 
 The Genesis-Sphere model shows **significant deviations** from standard cosmological data. The high reduced chi-square suggests that the current model formulation or parameter choices may need substantial revision to accurately describe the observed universe.
 
 ## Type Ia Supernovae Validation
 
-- **χ²**: 24080.51
+- **χ²**: 38819.25
 - **Degrees of Freedom**: 96
-- **Reduced χ²**: 250.84
+- **Reduced χ²**: 404.37
 - **p-value**: 0.00e+00
 
 ### Interpretation
@@ -31,9 +31,9 @@ The Genesis-Sphere model provides a **poor fit** to the Type Ia Supernovae data.
 
 ## Baryon Acoustic Oscillations Validation
 
-- **χ²**: 3720658.81
+- **χ²**: 3390739.28
 - **Degrees of Freedom**: 9
-- **Reduced χ²**: 413406.53
+- **Reduced χ²**: 376748.81
 - **p-value**: 0.00e+00
 
 ### Interpretation
@@ -42,9 +42,9 @@ The Genesis-Sphere model provides a **poor fit** to the Baryon Acoustic Oscillat
 
 ## CMB Distance Priors Validation
 
-- **χ²**: 1432467912876.27
+- **χ²**: 1541598047895.13
 - **Degrees of Freedom**: 3
-- **Reduced χ²**: 477489304292.09
+- **Reduced χ²**: 513866015965.04
 - **p-value**: 0.00e+00
 
 ### Interpretation

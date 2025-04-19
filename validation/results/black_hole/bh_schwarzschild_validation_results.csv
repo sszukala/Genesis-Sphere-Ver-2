@@ -1,2 +1,2 @@
 model_type,correlation,mean_abs_error,mean_squared_error,max_absolute_error,alpha,beta,omega,epsilon,time_scaling,optimized
-schwarzschild,,,,,0.02,0.8,1.0,0.1,1.0,True
+schwarzschild,,,,,0.02,1.2,2.0,0.1,1.0,False

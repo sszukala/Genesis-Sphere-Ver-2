@@ -2,10 +2,10 @@
 
 ### Genesis-Sphere Model Configuration
 - **Alpha (α)**: 0.0200 - *Spatial dimension expansion coefficient*
-- **Beta (β)**: 0.8000 - *Temporal damping factor*
-- **Omega (ω)**: 1.0000 - *Angular frequency*
+- **Beta (β)**: 1.2000 - *Temporal damping factor*
+- **Omega (ω)**: 2.0000 - *Angular frequency*
 - **Epsilon (ε)**: 0.1000 - *Zero-prevention constant*
-*These parameters were optimized to best fit the black hole time dilation.*
+*These parameters are using initial values without optimization.*
 
 ### Statistical Comparison
 - **Correlation Coefficient**: nan
@@ -26,6 +26,6 @@ The comparison between the Genesis-Sphere temporal flow function and black hole 
 - The high curvature regions near event horizons present the greatest modeling challenge
 
 ### Recommendations
-1. **Consider extending the temporal flow function** with additional terms for better accuracy
-2. **Explore alternative coordinate mappings** between r and t
-3. **Test with more sophisticated black hole metrics** (e.g., Kerr-Newman)
+1. **Run parameter optimization** to better match this black hole model
+2. **Focus on adjusting β parameter** which most directly affects temporal flow
+3. **Experiment with different time-radius mappings** to improve correlation

@@ -557,20 +557,52 @@ python validation/celestial_correlation_validation.py --optimize
 
 ## 🧠 Validation Datasets for Whitepaper
 
-Multiple validation scripts analyze real astronomical datasets to verify Genesis-Sphere's predictions. The results from these validations are referenced in the comprehensive whitepaper.
+Multiple validation scripts analyze real astronomical datasets to verify Genesis-Sphere's predictions. The results from these validations provide empirical evidence for the theoretical framework and are referenced in the comprehensive whitepaper.
 
 ### Key Validation Files Using Datasets
 
 The following validation scripts utilize datasets stored in the `validation/datasets` directory:
 
-1. **comprehensive_validation.py** - Uses Type Ia supernovae data, BAO measurements, CMB priors, and BBN abundances to comprehensively validate the model
-2. **observational_validation.py** - Tests model predictions against astronomical observations
-3. **cyclic_behavior_validation.py** - Validates cyclic behavior characteristics
-4. **celestial_correlation_validation.py** - Analyzes correlations with historical H₀ measurements, SN data, and BAO signals
-5. **inflationary_validation.py** - Tests compatibility with inflationary models
-6. **black_hole_validation.py** - Validates time dilation effects around black holes
-7. **astropy_validation.py** - Compares with standard Planck18/WMAP9 cosmologies
-8. **ned_validation.py** - Validates against the NED cosmology calculator
+1. **comprehensive_validation.py** - Performs rigorous validation against multiple cosmological datasets, including:
+   - Type Ia supernovae for distance-redshift relation
+   - Baryon Acoustic Oscillation (BAO) measurements for sound horizon scale
+   - CMB distance priors from Planck 2018
+   - Big Bang Nucleosynthesis (BBN) elemental abundance observations
+
+2. **observational_validation.py** - Tests model predictions against astronomical observations by:
+   - Comparing predicted distance modulus with supernovae data
+   - Analyzing Hubble parameter evolution against observational constraints
+   - Mapping Genesis-Sphere parameters to standard cosmological parameters
+
+3. **cyclic_behavior_validation.py** - Validates cyclic cosmology characteristics by:
+   - Analyzing phantom divide crossings in the equation of state
+   - Evaluating cycle period relationships with model parameters
+   - Comparing temporal flow behavior with theoretical expectations for cyclic models
+
+4. **celestial_correlation_validation.py** - Tests correlations with three key astronomical datasets:
+   - Historical Hubble constant (H₀) measurements from 1927-2022
+   - Type Ia supernovae distance modulus measurements from Pantheon+
+   - BAO sound horizon scale measurements with focus on z~2.3 signals
+
+5. **inflationary_validation.py** - Evaluates compatibility with inflation models through:
+   - Comparison with slow-roll approximation field dynamics
+   - Analysis against chaotic inflation scalar field oscillations
+   - Parameter optimization to match established inflationary models
+
+6. **black_hole_validation.py** - Validates temporal flow predictions for gravitational phenomena:
+   - Comparison with Schwarzschild black hole time dilation effects
+   - Analysis of Kerr-Newman spinning black hole temporal properties
+   - Validation against binary black hole merger time dilation
+
+7. **astropy_validation.py** - Compares with standard cosmological models:
+   - Maps Genesis-Sphere parameters to Planck18 and WMAP9 cosmologies
+   - Analyzes Hubble parameter and density evolution differences
+   - Evaluates model behavior across multiple redshift ranges
+
+8. **ned_validation.py** - Validates against the NASA/IPAC Extragalactic Database:
+   - Compares luminosity distance predictions
+   - Tests comoving and angular diameter distance calculations
+   - Validates cosmic age predictions at different redshifts
 
 All dataset analyses are documented in `validation/validation_datasets_report.md`, and the results are incorporated into the Genesis-Sphere whitepaper as empirical evidence supporting the theoretical framework.
 

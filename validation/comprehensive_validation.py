@@ -66,7 +66,7 @@ class GSCosmology:
     Maps Genesis-Sphere parameters to standard cosmological observables,
     allowing direct comparison with cosmological data.
     """
-    def __init__(self, alpha=0.02, beta=0.8, omega=1.0, epsilon=0.1,
+    def __init__(self, alpha=0.02, beta=1.2, omega=2.0, epsilon=0.1,
                 h0=0.7, Omega_b=0.05, Omega_r=8.6e-5):
         """
         Initialize the cosmological model
@@ -104,12 +104,15 @@ class GSCosmology:
     def _calc_omega_m(self):
         """Map Genesis-Sphere parameters to matter density"""
         # Higher beta (stronger time dilation) correlates with higher matter density
-        return 0.3 * (1 - np.tanh(self.beta - 0.8))
+        # Updated to handle beta=1.2 correctly
+        return 0.3 * (1 + 0.2 * np.tanh(1.5 - self.beta))
 
     def _calc_omega_de(self):
         """Map Genesis-Sphere parameters to dark energy density"""
         # Alpha influences cosmic acceleration via dimension expansion
-        return 0.7 * (1 + np.tanh(self.alpha*50 - 1))
+        # Adjusted to ensure matter + dark energy + radiation ≈ 1.0
+        omega_m = self._calc_omega_m()
+        return 1.0 - omega_m - self.Omega_r
 
     def _t_to_z(self, t):
         """Convert Genesis-Sphere time to redshift"""
@@ -912,7 +915,9 @@ def generate_summary_report(validation_results):
     print(f"\nSummary report saved to: {summary_path}")
     return summary_path
 
-def run_all_validations(gs_params=None, datasets=None):
+def run_all_validations(gs_params=None, datasets=None, 
+                      sne_only=False, bao_only=False, cmb_only=False, bbn_only=False,
+                      optimize=False, silent=False):
     """
     Run all validation tests on the Genesis-Sphere model against various cosmological datasets
     Parameters:
@@ -931,8 +936,8 @@ def run_all_validations(gs_params=None, datasets=None):
     if gs_params is None:
         gs_params = {
             'alpha': 0.02,
-            'beta': 0.8,
-            'omega': 1.0,
+            'beta': 1.2,
+            'omega': 2.0,
             'epsilon': 0.1
         }
     print("\n" + "="*80)
@@ -987,8 +992,8 @@ def optimize_parameters(datasets, init_params=None, method='Nelder-Mead'):
     if init_params is None:
         init_params = {
             'alpha': 0.02,
-            'beta': 0.8,
-            'omega': 1.0,
+            'beta': 1.2,
+            'omega': 2.0,
             'epsilon': 0.1
         }
     # Convert to parameter array for optimizer
@@ -1220,8 +1225,8 @@ def main():
     # Set up argument parser
     parser = argparse.ArgumentParser(description="Comprehensive Validation of Genesis-Sphere Model")
     parser.add_argument("--alpha", type=float, default=0.02, help="Spatial dimension expansion coefficient")
-    parser.add_argument("--beta", type=float, default=0.8, help="Temporal damping factor")
-    parser.add_argument("--omega", type=float, default=1.0, help="Angular frequency parameter")
+    parser.add_argument("--beta", type=float, default=1.2, help="Temporal damping factor")
+    parser.add_argument("--omega", type=float, default=2.0, help="Angular frequency parameter")
     parser.add_argument("--epsilon", type=float, default=0.1, help="Zero-prevention constant")
     parser.add_argument("--optimize", action="store_true", help="Optimize parameters by minimizing chi-squared")
     parser.add_argument("--sne-only", action="store_true", help="Run only Type Ia supernovae validation")

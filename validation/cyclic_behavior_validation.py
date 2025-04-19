@@ -740,12 +740,12 @@ def generate_cyclic_validation_summary(validation_results):
     
     return summary_path
 
-def main():
+def main(alpha=0.02, beta=1.2, omega=2.0, epsilon=0.1, regenerate=False):
     """Main function to run the validation"""
     parser = argparse.ArgumentParser(description="Validate cyclic behavior in the Genesis-Sphere model")
     parser.add_argument("--alpha", type=float, default=0.02, help="Spatial dimension expansion coefficient")
-    parser.add_argument("--beta", type=float, default=0.8, help="Temporal damping factor")
-    parser.add_argument("--omega", type=float, default=1.0, help="Angular frequency")
+    parser.add_argument("--beta", type=float, default=1.2, help="Temporal damping factor")
+    parser.add_argument("--omega", type=float, default=2.0, help="Angular frequency")
     parser.add_argument("--epsilon", type=float, default=0.1, help="Small constant to prevent division by zero")
     parser.add_argument("--regenerate", action="store_true", help="Force regeneration of all datasets")
     

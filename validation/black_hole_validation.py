@@ -706,7 +706,7 @@ def generate_bh_validation_summary(model_type, comparison_results, gs_params, op
     # Join all parts of the summary with newlines
     return "\n".join(summary)
 
-def main(model_type="schwarzschild", alpha=0.02, beta=0.8, omega=1.0, epsilon=0.1, 
+def main(model_type="schwarzschild", alpha=0.02, beta=1.2, omega=2.0, epsilon=0.1, 
          optimize=False, time_scaling=1.0, spin=0.9, charge=0.4):
     """Main function to run the validation"""
     print("Genesis-Sphere Black Hole Time Dilation Validation")
@@ -790,8 +790,8 @@ if __name__ == "__main__":
                         choices=["schwarzschild", "kerr", "kerr_newman", "merger"],
                         help="Black hole model to use for validation")
     parser.add_argument("--alpha", type=float, default=0.02, help="Spatial dimension expansion coefficient")
-    parser.add_argument("--beta", type=float, default=0.8, help="Temporal damping factor")
-    parser.add_argument("--omega", type=float, default=1.0, help="Angular frequency for sinusoidal projections")
+    parser.add_argument("--beta", type=float, default=1.2, help="Temporal damping factor")
+    parser.add_argument("--omega", type=float, default=2.0, help="Angular frequency for sinusoidal projections")
     parser.add_argument("--epsilon", type=float, default=0.1, help="Small constant to prevent division by zero")
     parser.add_argument("--optimize", action="store_true", help="Optimize model parameters to fit black hole model")
     parser.add_argument("--time-scaling", type=float, default=1.0, help="Scaling factor for time mapping")

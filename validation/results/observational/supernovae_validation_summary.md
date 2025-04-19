@@ -2,15 +2,15 @@
 
 ### Genesis-Sphere Model Configuration
 - **Alpha (α)**: 0.0200 - *Spatial dimension expansion coefficient*
-- **Beta (β)**: 0.8000 - *Temporal damping factor*
-- **Omega (ω)**: 1.0000 - *Angular frequency*
+- **Beta (β)**: 1.2000 - *Temporal damping factor*
+- **Omega (ω)**: 2.0000 - *Angular frequency*
 - **Epsilon (ε)**: 0.1000 - *Zero-prevention constant*
 *These parameters are using initial values without optimization.*
 
 ### Statistical Fit Analysis
-- **Chi-Square**: 182515.83
+- **Chi-Square**: 222015.95
 - **Degrees of Freedom**: 96
-- **Reduced Chi-Square**: 1901.21
+- **Reduced Chi-Square**: 2312.67
 
 ### Interpretation
 The model provides a **poor fit** to the data. This suggests that:

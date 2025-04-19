@@ -322,26 +322,31 @@ def calculate_chi_square(gs_model, dataset_name, data, predictions):
         print(f"Dataset '{dataset_name}' not recognized for chi-square calculation.")
         return float('inf')
 
-def optimize_model_parameters(dataset_name, data, initial_params):
+def optimize_model_parameters(dataset_name, data, initial_params=None):
     """
-    Finds optimal Genesis-Sphere parameters to fit the data.
+    Optimize Genesis-Sphere parameters to fit the dataset
     
     Parameters:
     -----------
     dataset_name : str
-        Name of the dataset
-    data : pd.DataFrame
-        The dataset
-    initial_params : dict
-        Initial parameter values
+        Name of the dataset ('supernovae', 'cmb', 'bao')
+    data : DataFrame
+        Dataset to fit
+    initial_params : dict, optional
+        Initial parameter values to start optimization
         
     Returns:
     --------
-    dict
-        Optimized parameters
-    float
-        Final chi-square value
+    dict:
+        Dictionary with optimized parameters and final chi-squared
     """
+    if initial_params is None:
+        initial_params = {
+            'alpha': 0.02,
+            'beta': 1.2,
+            'omega': 2.0,
+            'epsilon': 0.1
+        }
     # Define objective function for optimization
     def objective(params):
         alpha, beta, omega, epsilon = params
@@ -619,45 +624,45 @@ def generate_validation_summary(dataset_name, chi2, dof, gs_params, optimized=Fa
     # Join all parts of the summary with newlines
     return "\n".join(summary)
 
-def main(dataset, data_file, alpha, beta, omega, epsilon, optimize):
+def main(dataset_name="supernovae", data_file=None, alpha=0.02, beta=1.2, omega=2.0, epsilon=0.1, optimize=False):
     """Main function to run the validation"""
     print("Genesis-Sphere Model Validation Against Observational Data")
     print("========================================================")
     
     # Load dataset
-    data = load_dataset(dataset, data_file)
+    data = load_dataset(dataset_name, data_file)
     
     # Set initial parameters
     initial_params = {'alpha': alpha, 'beta': beta, 'omega': omega, 'epsilon': epsilon}
     
     # Optimize parameters if requested
     if optimize:
-        gs_params, chi2 = optimize_model_parameters(dataset, data, initial_params)
+        gs_params, chi2 = optimize_model_parameters(dataset_name, data, initial_params)
     else:
         gs_params = initial_params
         # Initialize model with provided parameters
         gs_model = GenesisSphereModel(**gs_params)
         # Make predictions
-        predictions = genesis_sphere_prediction_for_dataset(gs_model, dataset, data)
+        predictions = genesis_sphere_prediction_for_dataset(gs_model, dataset_name, data)
         # Calculate chi-square
-        chi2 = calculate_chi_square(gs_model, dataset, data, predictions)
+        chi2 = calculate_chi_square(gs_model, dataset_name, data, predictions)
         print(f"Chi-square with initial parameters: {chi2:.2f}")
     
     # Initialize model with final parameters
     gs_model = GenesisSphereModel(**gs_params)
     
     # Make predictions
-    predictions = genesis_sphere_prediction_for_dataset(gs_model, dataset, data)
+    predictions = genesis_sphere_prediction_for_dataset(gs_model, dataset_name, data)
     
     # Visualize comparison
-    fig_path = visualize_comparison(dataset, data, predictions, gs_params)
+    fig_path = visualize_comparison(dataset_name, data, predictions, gs_params)
     
     # Generate AI summary
     dof = len(data) - 4  # degrees of freedom = number of data points - number of parameters
-    summary = generate_validation_summary(dataset, chi2, dof, gs_params, optimize)
+    summary = generate_validation_summary(dataset_name, chi2, dof, gs_params, optimize)
     
     # Save summary to file
-    summary_path = os.path.join(results_dir, f"{dataset}_validation_summary.md")
+    summary_path = os.path.join(results_dir, f"{dataset_name}_validation_summary.md")
     with open(summary_path, 'w', encoding='utf-8') as f:
         f.write(summary)
     
@@ -666,7 +671,7 @@ def main(dataset, data_file, alpha, beta, omega, epsilon, optimize):
     
     # Save validation results
     results = {
-        'dataset': dataset,
+        'dataset': dataset_name,
         'chi_square': chi2,
         'dof': dof,
         'reduced_chi_square': chi2 / dof,
@@ -677,7 +682,7 @@ def main(dataset, data_file, alpha, beta, omega, epsilon, optimize):
     }
     
     results_df = pd.DataFrame([results])
-    results_df.to_csv(os.path.join(results_dir, f"{dataset}_validation_results.csv"), index=False)
+    results_df.to_csv(os.path.join(results_dir, f"{dataset_name}_validation_results.csv"), index=False)
     
     print(f"\nResults and visualizations saved to: {results_dir}")
     
@@ -691,8 +696,8 @@ if __name__ == "__main__":
     parser.add_argument("--data-file", type=str, default=None, 
                         help="Path to data file (optional, uses synthetic data if not provided)")
     parser.add_argument("--alpha", type=float, default=0.02, help="Spatial dimension expansion coefficient")
-    parser.add_argument("--beta", type=float, default=0.8, help="Temporal damping factor")
-    parser.add_argument("--omega", type=float, default=1.0, help="Angular frequency for sinusoidal projections")
+    parser.add_argument("--beta", type=float, default=1.2, help="Temporal damping factor")
+    parser.add_argument("--omega", type=float, default=2.0, help="Angular frequency for sinusoidal projections")
     parser.add_argument("--epsilon", type=float, default=0.1, help="Small constant to prevent division by zero")
     parser.add_argument("--optimize", action="store_true", help="Optimize model parameters to fit data")
     parser.add_argument("--no-summary", action="store_true", help="Skip generating the AI validation summary")

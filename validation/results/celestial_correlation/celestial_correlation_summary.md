@@ -1,6 +1,6 @@
 # Genesis-Sphere Celestial Correlation Validation Report
 
-**Generated**: 2025-04-18 22:27:36
+**Generated**: 2025-04-19 06:50:51
 
 ## Model Parameters
 
@@ -14,7 +14,7 @@
 ## Overall Assessment
 
 - **Hubble Constant Evolution**: -25.3% correlation with H₀ measurement variations
-- **Type Ia Supernovae**: R² = -542.5% match with distance modulus data
+- **Type Ia Supernovae**: R² = -529.1% match with distance modulus data
 - **Baryon Acoustic Oscillations**: Effect size of 27.58 at z~2.3
 
 ## Hubble Constant Correlation
@@ -27,13 +27,13 @@ The correlation is weaker than expected, suggesting that the current parameter c
 
 ## Type Ia Supernovae Distance Modulus
 
-The Genesis-Sphere model achieved an R² value of **-542.5%** when fitting Type Ia supernovae distance modulus data, indicating how well the model reproduces the observed expansion history of the universe.
+The Genesis-Sphere model achieved an R² value of **-529.1%** when fitting Type Ia supernovae distance modulus data, indicating how well the model reproduces the observed expansion history of the universe.
 
 The fit suggests that the current model configuration may need adjustment to better match the observed distance-redshift relation from supernovae.
 
 Additional metrics:
-- Reduced χ² = 2409.55
-- Mean Absolute Error = 5.83 mag
+- Reduced χ² = 2312.67
+- Mean Absolute Error = 5.78 mag
 
 ![SNe Fit](sne_fit.png)
 
@@ -44,7 +44,7 @@ Analysis of BAO data reveals a detection effect size of **27.58** at redshift z~
 This strong detection indicates that Genesis-Sphere's cyclic behavior has a statistically significant influence on BAO measurements at z~2.3. The effect aligns with theoretical predictions that cycle transitions would leave observable imprints on the cosmic sound horizon scale, particularly at this critical redshift range.
 
 Additional metrics:
-- Overall BAO fit R² = -5866.385
+- Overall BAO fit R² = -8159.139
 - High-z region standard deviation = 0.00 Mpc
 
 ![BAO Detection](bao_detection.png)

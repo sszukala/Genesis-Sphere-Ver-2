@@ -611,8 +611,8 @@ def optimize_gs_parameters(h0_data, sne_data, bao_data, initial_params=None):
     if initial_params is None:
         initial_params = {
             'alpha': 0.02,
-            'beta': 0.8,
-            'omega': 1.0,
+            'beta': 1.2,
+            'omega': 2.0,
             'epsilon': 0.1
         }
     
@@ -981,8 +981,8 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Validate Genesis-Sphere model against astronomical datasets")
     parser.add_argument("--alpha", type=float, default=0.02, help="Spatial dimension expansion coefficient")
-    parser.add_argument("--beta", type=float, default=0.8, help="Temporal damping factor")
-    parser.add_argument("--omega", type=float, default=1.0, help="Angular frequency")
+    parser.add_argument("--beta", type=float, default=1.2, help="Temporal damping factor")
+    parser.add_argument("--omega", type=float, default=2.0, help="Angular frequency")
     parser.add_argument("--epsilon", type=float, default=0.1, help="Small constant to prevent division by zero")
     parser.add_argument("--optimize", action="store_true", help="Optimize parameters to fit data")
     
