@@ -1,0 +1,14 @@
+{
+    "min_tf_beta_correlation": -0.9516474197132865,
+    "recovery_beta_correlation": 0.9638262261071031,
+    "min_tf_beta_slope": -0.17893303593278267,
+    "recovery_beta_slope": 0.5805805805805804,
+    "min_tf_range": [
+        0.1091703056768559,
+        0.3289473684210526
+    ],
+    "recovery_range": [
+        3.723723723723724,
+        4.434434434434435
+    ]
+}

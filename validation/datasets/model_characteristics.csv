@@ -1,0 +1,5 @@
+model,key_features,parameters,cycle_period
+Genesis-Sphere,Temporal flow slows near t=0; Sinusoidal density modulation,"α=0.02, β=0.8, ω=1.0, ε=0.1",7.55
+Ekpyrotic,"Slow contraction, rapid expansion; Brane collisions",Theoretical,12.56
+Oscillating (Tolman),Entropy increases with each cycle; Decreasing amplitude,Theoretical,15.70
+Quantum Bounce,Quantum gravity prevents singularity; Smooth bounce,Theoretical,18.84

@@ -1,0 +1,18 @@
+{
+    "periods": {
+        "genesis_sphere": 7.551551551551552,
+        "ekpyrotic": 12.559225892559226,
+        "oscillating": 15.695695695695695,
+        "quantum_bounce": 18.83883883883884
+    },
+    "period_ratios": {
+        "gs_to_ekpyrotic": 0.6012752391073326,
+        "gs_to_oscillating": 0.4811224489795919,
+        "gs_to_quantum": 0.40085015940488844
+    },
+    "feature_overlap": {
+        "ekpyrotic": 0.0,
+        "oscillating": 0.0,
+        "quantum": 0.0
+    }
+}

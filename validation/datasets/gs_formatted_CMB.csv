@@ -1,0 +1,10 @@
+parameter,value,error,description
+omega_b,0.02237,0.00015,Baryon density
+omega_c,0.12,0.0012,Cold dark matter density
+theta_MC,1.04092,0.00031,Acoustic scale
+tau,0.0544,0.0073,Reionization optical depth
+ln(10^10 A_s),3.044,0.014,Primordial perturbation amplitude
+n_s,0.9649,0.0042,Scalar spectral index
+H0,67.36,0.54,Hubble constant
+Omega_m,0.3153,0.0073,Matter density parameter
+sigma_8,0.8111,0.006,Density fluctuation amplitude
