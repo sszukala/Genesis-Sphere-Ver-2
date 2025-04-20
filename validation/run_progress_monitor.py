@@ -275,7 +275,11 @@ def monitor_plot_mode(run_dir, refresh_rate=5):
         
         return progress_line, speed_line, omega_line, beta_line, score_line, progress_text, eta_text, param_text
     
-    ani = FuncAnimation(fig, update, frames=None, init_func=init, blit=True, interval=refresh_rate*1000)
+    # Fix the animation warning by setting cache_frame_data=False
+    # This prevents building up an unbounded cache during long monitoring sessions
+    ani = FuncAnimation(fig, update, frames=None, init_func=init, blit=True, 
+                        interval=refresh_rate*1000, cache_frame_data=False, save_count=100)
+    
     plt.tight_layout()
     plt.subplots_adjust(top=0.9)  # Make room for suptitle
     plt.show()
