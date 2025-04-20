@@ -1,0 +1,19 @@
+{
+    "timestamp": "20250420_123556",
+    "samples_saved": 10,
+    "current_results": {
+        "omega": {
+            "median": 3.4721070630495845
+        },
+        "beta": {
+            "median": -0.033427433315466645
+        }
+    },
+    "fixed_params": {
+        "alpha": 0.02,
+        "epsilon": 0.1,
+        "nwalkers": 10,
+        "nsteps": 50,
+        "nburn": 10
+    }
+}
