@@ -514,7 +514,7 @@ def main():
     parser.add_argument("--epsilon", type=float, default=0.1, help="Fixed epsilon value")
     parser.add_argument("--nwalkers", type=int, default=32, help="Number of MCMC walkers (must be > 2*N_DIM)")
     parser.add_argument("--nsteps", type=int, default=5000, help="Number of MCMC steps per walker")
-    parser.add.add_argument("--nburn", type=int, default=1000, help="Number of burn-in steps to discard")
+    parser.add_argument("--nburn", type=int, default=1000, help="Number of burn-in steps to discard")
     parser.add_argument("--initial_omega", type=float, default=3.5, help="Initial guess for omega")
     parser.add_argument("--initial_beta", type=float, default=-0.0333, help="Initial guess for beta")
     parser.add_argument("--output_suffix", type=str, default="", help="Optional suffix for output filenames")
