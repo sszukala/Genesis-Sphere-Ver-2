@@ -25,21 +25,255 @@ import signal # For timeout handling
 import gc # For garbage collection
 import psutil # For memory monitoring, install with: pip install psutil
 
+# Global flag for GPU status
+HAS_GPU = False
+GPU_INFO = {"name": "None", "memory": "0 MB", "compute_capability": "N/A"}
+
+# Add CUDA detection and path resolution function
+def find_cuda_libraries():
+    """Find CUDA libraries from common installation locations and add to PATH"""
+    # Common CUDA installation paths
+    common_cuda_paths = [
+        # Windows paths
+        r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.2",
+        r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.0",
+        r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.1",
+        r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.3",
+        r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.4",
+        r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.5",
+        r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.6",
+        r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.7",
+        r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.8",
+        r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.0",
+        r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.1",
+        r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.2",
+        # Add more paths as needed
+    ]
+    
+    # Look for environment variable indicating CUDA path
+    cuda_path_env = os.environ.get('CUDA_PATH')
+    if cuda_path_env:
+        common_cuda_paths.insert(0, cuda_path_env)  # Prioritize env variable path
+    
+    # Check for CUDA_HOME environment variable as well
+    cuda_home_env = os.environ.get('CUDA_HOME')
+    if cuda_home_env and cuda_home_env != cuda_path_env:
+        common_cuda_paths.insert(0, cuda_home_env)
+    
+    found_paths = []
+    
+    # Check each path and add bin directory to PATH if it exists
+    for cuda_path in common_cuda_paths:
+        bin_path = os.path.join(cuda_path, 'bin')
+        if os.path.exists(bin_path):
+            # Check if specific DLL exists
+            if os.path.exists(os.path.join(bin_path, 'nvrtc64_110_0.dll')) or \
+               os.path.exists(os.path.join(bin_path, 'nvrtc64_112_0.dll')) or \
+               os.path.exists(os.path.join(bin_path, 'nvrtc64_120_0.dll')):
+                found_paths.append(bin_path)
+                
+                # Add to PATH if not already there
+                if bin_path not in os.environ['PATH'].split(os.pathsep):
+                    os.environ['PATH'] = bin_path + os.pathsep + os.environ['PATH']
+                    print(f"Added CUDA bin directory to PATH: {bin_path}")
+                
+                # Also add lib64 path if it exists (for Linux)
+                lib64_path = os.path.join(cuda_path, 'lib64')
+                if os.path.exists(lib64_path):
+                    if 'LD_LIBRARY_PATH' in os.environ:
+                        if lib64_path not in os.environ['LD_LIBRARY_PATH'].split(os.pathsep):
+                            os.environ['LD_LIBRARY_PATH'] = lib64_path + os.pathsep + os.environ['LD_LIBRARY_PATH']
+                    else:
+                        os.environ['LD_LIBRARY_PATH'] = lib64_path
+                
+                # Add lib/x64 path for Windows
+                lib_x64_path = os.path.join(cuda_path, 'lib', 'x64')
+                if os.path.exists(lib_x64_path):
+                    if lib_x64_path not in os.environ['PATH'].split(os.pathsep):
+                        os.environ['PATH'] = lib_x64_path + os.pathsep + os.environ['PATH']
+    
+    return found_paths
+
+# Try to find CUDA libraries before importing CuPy
+found_cuda_paths = find_cuda_libraries()
+if found_cuda_paths:
+    print(f"Found CUDA installations at: {', '.join(found_cuda_paths)}")
+else:
+    print("No CUDA installations found in common locations.")
+    print("If CUDA is installed, try setting the CUDA_PATH environment variable.")
+
 # Try to import CuPy for GPU acceleration, fall back to NumPy if not available
 try:
     import cupy as cp
-    # Test that CuPy is actually working
+    # Initial simple test that CuPy is available
     test_array = cp.array([1, 2, 3])
     test_result = cp.sum(test_array)  # Test a basic operation
     del test_array, test_result
-    HAS_GPU = True
-    print("CuPy successfully imported and tested. Using GPU acceleration.")
+    # At this point we have CuPy imported, but need more thorough tests
+    CUPY_IMPORT_SUCCESS = True
+    print("CuPy successfully imported. Running GPU verification tests...")
 except (ImportError, Exception) as e:
     import numpy as np
     cp = np  # Use NumPy as a fallback
+    CUPY_IMPORT_SUCCESS = False
     HAS_GPU = False
     print(f"GPU acceleration not available: {e}")
     print("Using CPU with NumPy instead.")
+    
+    # Provide more detailed error information for common issues
+    if "nvrtc64_112_0.dll" in str(e) or "nvrtc64_110_0.dll" in str(e) or "nvrtc64_120_0.dll" in str(e):
+        print("\nCUDA DLL missing error detected. Possible solutions:")
+        print("1. Install NVIDIA CUDA Toolkit matching your CuPy version")
+        print("   - For CuPy 11.x: CUDA 11.0 - 11.8")
+        print("   - For CuPy 12.x: CUDA 12.0+")
+        print("2. Reinstall CuPy to match your CUDA version:")
+        print("   - For CUDA 11.0-11.2: pip install cupy-cuda11x")
+        print("   - For CUDA 11.3-11.8: pip install cupy-cuda11x")
+        print("   - For CUDA 12.x:      pip install cupy-cuda12x")
+        print("3. Make sure CUDA bin directory is in your PATH environment variable")
+        print("   - Usually C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v11.x\\bin")
+        print("4. Run with --force_cpu flag if you want to use CPU only\n")
+
+def verify_gpu_operation(force_cpu=False):
+    """
+    Perform comprehensive verification of GPU operation.
+    Returns True if GPU is fully operational, False otherwise.
+    """
+    global HAS_GPU, GPU_INFO
+    
+    if force_cpu:
+        print("Forcing CPU mode as requested.")
+        return False
+    
+    if not CUPY_IMPORT_SUCCESS:
+        print("CuPy import failed, cannot use GPU.")
+        return False
+    
+    try:
+        # 1. Check CUDA availability and version
+        cuda_version = cp.cuda.runtime.runtimeGetVersion()
+        driver_version = cp.cuda.runtime.driverGetVersion()
+        print(f"CUDA Runtime Version: {cuda_version//1000}.{(cuda_version%1000)//10}")
+        print(f"CUDA Driver Version: {driver_version//1000}.{(driver_version%1000)//10}")
+        
+        # 2. Get device information
+        device_count = cp.cuda.runtime.getDeviceCount()
+        if device_count == 0:
+            print("No CUDA devices detected!")
+            return False
+            
+        print(f"Found {device_count} CUDA device(s):")
+        for i in range(device_count):
+            properties = cp.cuda.runtime.getDeviceProperties(i)
+            name = properties["name"].decode("utf-8")
+            total_memory = properties["totalGlobalMem"] / (1024**2)  # Convert to MB
+            compute_capability = f"{properties['major']}.{properties['minor']}"
+            
+            print(f"  Device {i}: {name}")
+            print(f"    Total Memory: {total_memory:.0f} MB")
+            print(f"    Compute Capability: {compute_capability}")
+            
+            # Store info for the first (or selected) device
+            if i == 0:
+                GPU_INFO = {
+                    "name": name,
+                    "memory": f"{total_memory:.0f} MB",
+                    "compute_capability": compute_capability
+                }
+        
+        # 3. Test memory allocation
+        try:
+            # Allocate a small tensor (100MB)
+            test_size = 25_000_000  # ~100MB in float32
+            memory_test = cp.zeros(test_size, dtype=cp.float32)
+            memory_test[0] = 1.0  # Test memory write
+            assert memory_test[0] == 1.0  # Test memory read
+            del memory_test
+            print("GPU memory allocation test passed.")
+        except Exception as e:
+            print(f"GPU memory allocation failed: {e}")
+            return False
+            
+        # 4. Test computation with representative workload
+        try:
+            # Matrix operations similar to what we'll do in MCMC
+            matrix_size = 1000
+            A = cp.random.rand(matrix_size, matrix_size, dtype=cp.float32)
+            b = cp.random.rand(matrix_size, dtype=cp.float32)
+            
+            # Time the computation
+            start = time.time()
+            result = cp.dot(A, b)
+            cp.cuda.Device().synchronize()  # Make sure computation is complete
+            duration = time.time() - start
+            
+            # Verify result isn't corrupt
+            assert not cp.isnan(cp.sum(result)), "Computation produced NaN values"
+            
+            print(f"GPU computation test passed in {duration:.3f} seconds.")
+            
+            # Optional - benchmark CPU vs GPU for the same task
+            if matrix_size <= 2000:  # Don't do this for huge matrices
+                A_cpu = np.array(A.get())
+                b_cpu = np.array(b.get())
+                
+                start = time.time()
+                result_cpu = np.dot(A_cpu, b_cpu)
+                cpu_duration = time.time() - start
+                
+                del A_cpu, b_cpu, result_cpu
+                print(f"Same operation on CPU: {cpu_duration:.3f} seconds")
+                print(f"GPU speedup: {cpu_duration/duration:.1f}x")
+            
+            # Clean up
+            del A, b, result
+            cp.get_default_memory_pool().free_all_blocks()
+            
+        except Exception as e:
+            print(f"GPU computation test failed: {e}")
+            return False
+            
+        # 5. Test combined operation that mimics our actual function
+        try:
+            # Setup simple function similar to our likelihood
+            def test_likelihood(n_points=1000):
+                # Matrix operations typical in our computation
+                x = cp.random.rand(n_points)
+                y = cp.random.rand(n_points)
+                z = cp.random.rand(n_points)
+                
+                # Operations similar to our model
+                sin_term = cp.sin(x * 2.0)
+                rho = (1.0 / (1.0 + sin_term**2)) * (1.0 + 0.02 * y**2)
+                tf = 1.0 / (1.0 + 0.8 * (cp.abs(z) + 0.1))
+                result = rho / cp.sqrt(tf)
+                
+                # Reduction and chi-squared-like operation
+                chi2 = cp.sum((result - 1.0)**2)
+                return float(chi2)
+                
+            # Test the function
+            test_chi2 = test_likelihood(5000)
+            assert np.isfinite(test_chi2), "Test likelihood produced invalid result"
+            print(f"GPU likelihood function test passed: χ² = {test_chi2:.4f}")
+            
+            # GPU memory management test
+            cp.get_default_memory_pool().free_all_blocks()
+            print("GPU memory pool cleared successfully.")
+            
+        except Exception as e:
+            print(f"GPU likelihood test failed: {e}")
+            return False
+        
+        # All tests passed
+        print("All GPU verification tests PASSED. CUDA GPU is operational.")
+        HAS_GPU = True
+        return True
+        
+    except Exception as e:
+        print(f"GPU verification failed with error: {e}")
+        HAS_GPU = False
+        return False
 
 # GPU helper functions
 def to_gpu(arr):
@@ -487,7 +721,7 @@ def save_intermediate_results(sampler, nburn, output_dir, prefix, fixed_params, 
         
         if len(samples) == 0:
             print("No valid samples to save yet.")
-            return
+            return None
             
         # Create DataFrame and save
         df_samples = pd.DataFrame(samples, columns=['omega', 'beta'])
@@ -501,10 +735,55 @@ def save_intermediate_results(sampler, nburn, output_dir, prefix, fixed_params, 
                 if len(samples) >= 3:  # Need at least 3 samples for percentiles
                     mcmc = np.percentile(samples[:, i], [16, 50, 84])
                     median = mcmc[1]
-                    results_summary[label] = {'median': float(median)}
+                    q = np.diff(mcmc)  # q[0] = 50th-16th, q[1] = 84th-50th
+                    lower_err = q[0]
+                    upper_err = q[1]
+                    results_summary[label] = {
+                        'median': float(median),
+                        'lower_err': float(lower_err),
+                        'upper_err': float(upper_err)
+                    }
                 else:
                     # Just use mean if not enough for percentiles
-                    results_summary[label] = {'median': float(np.mean(samples[:, i]))}
+                    median = float(np.mean(samples[:, i]))
+                    std = float(np.std(samples[:, i])) if len(samples) > 1 else 0.0
+                    results_summary[label] = {
+                        'median': median,
+                        'lower_err': std,
+                        'upper_err': std
+                    }
+            
+            # Calculate preliminary performance metrics if possible
+            performance_metrics = {}
+            try:
+                omega_median = results_summary['omega']['median']
+                beta_median = results_summary['beta']['median']
+                
+                # Create a model with current best parameters
+                gs_model = GenesisSphereModel(
+                    alpha=fixed_params['alpha'], 
+                    beta=beta_median, 
+                    omega=omega_median, 
+                    epsilon=fixed_params['epsilon']
+                )
+                
+                # Quick calculation of key metrics
+                # These are simplified approximations to avoid full data loading
+                h0_corr = estimate_h0_correlation(gs_model)
+                sne_r2 = estimate_sne_r2(gs_model)
+                bao_effect = estimate_bao_effect(gs_model)
+                
+                performance_metrics = {
+                    'h0_correlation_approx': float(h0_corr),
+                    'sne_r2_approx': float(sne_r2),
+                    'bao_effect_approx': float(bao_effect),
+                    'combined_score_approx': float((h0_corr + sne_r2 + min(1.0, bao_effect/100))/3)
+                }
+            except Exception as e:
+                print(f"Could not calculate performance metrics: {e}")
+                performance_metrics = {
+                    'calculation_error': str(e)
+                }
             
             # Save basic info with additional runtime metrics
             info = {
@@ -516,8 +795,11 @@ def save_intermediate_results(sampler, nburn, output_dir, prefix, fixed_params, 
                     'step_number': step_number,
                     'batch_speed': batch_speed,
                     'elapsed_minutes': total_elapsed / 60.0,
-                    'epoch': int(step_number / len(sampler.chain))
-                }
+                    'epoch': float(step_number / sampler.chain.shape[0]),
+                    'percent_complete': float(step_number / (fixed_params['nsteps'] + step_number - 
+                                                           (step_number % fixed_params['nsteps']))*100)
+                },
+                'preliminary_metrics': performance_metrics
             }
             
             info_file = os.path.join(output_dir, f"{prefix}_checkpoint_info_{timestamp}.json")
@@ -531,13 +813,23 @@ def save_intermediate_results(sampler, nburn, output_dir, prefix, fixed_params, 
                      random_state=np.random.get_state())
                 
             print(f"Checkpoint saved with {len(samples)} samples. Current estimates:")
-            print(f"  Epoch: {int(step_number / len(sampler.chain))}, Steps: {step_number}")
-            print(f"  Batch speed: {batch_speed:.1f} samples/s, Elapsed: {total_elapsed/60:.1f} min")
             for param, values in results_summary.items():
-                print(f"  {param}: {values['median']:.4f}")
+                print(f"  {param}: {values['median']:.4f} (+{values['upper_err']:.4f}/-{values['lower_err']:.4f})")
+            
+            if 'preliminary_metrics' in info and len(performance_metrics) > 0:
+                print("  Preliminary performance metrics (approximate):")
+                for metric, value in performance_metrics.items():
+                    if 'approx' in metric:
+                        metric_name = metric.replace('_approx', '')
+                        print(f"    {metric_name}: {value:.4f}")
+        
+        return checkpoint_file
     
     except Exception as e:
         print(f"Error saving checkpoint: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
 
 # === Main Execution ===
 
@@ -562,8 +854,27 @@ def main():
                         help="Maximum runtime in minutes (default: 30 minutes)")
     parser.add_argument("--resume", type=str, default="", 
                         help="Path to state file to resume from a previous run")
+    parser.add_argument("--force_cpu", action="store_true",
+                       help="Force CPU mode even if GPU is available")
+    parser.add_argument("--verify_gpu", action="store_true",
+                       help="Run GPU verification tests and exit")
 
     args = parser.parse_args()
+    
+    # Run GPU verification
+    if args.verify_gpu:
+        verify_gpu_operation(args.force_cpu)
+        print("GPU verification complete. Exiting.")
+        return
+        
+    # Initialize GPU if we want to use it
+    gpu_status = verify_gpu_operation(args.force_cpu)
+    if gpu_status:
+        print(f"Using GPU: {GPU_INFO['name']} with {GPU_INFO['memory']} memory")
+    else:
+        print("Using CPU mode for computation")
+        global HAS_GPU
+        HAS_GPU = False
 
     # Create save points directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -576,9 +887,9 @@ def main():
     if args.test_mode:
         print("Running in TEST MODE with reduced computation")
         args.nwalkers = 10
-        args.nsteps = 50
+        args.nsteps = 25  # Reduced from 50 to 25 steps for quicker testing
         args.nburn = 10
-        args.checkpoint_interval = 10
+        args.checkpoint_interval = 5  # More frequent checkpoints (was 10)
 
     # Validate walker count
     if args.nwalkers <= 2 * N_DIM:
@@ -635,7 +946,8 @@ def main():
                 print("  GPU test successful.")
             except Exception as e:
                 print(f"  Warning: GPU setup encountered an issue: {e}")
-                print("  Continuing with reduced GPU optimization.")
+                print("  Falling back to CPU mode.")
+                HAS_GPU = False
     except Exception as e:
         print(f"Error loading data: {e}")
         sys.exit(1)
@@ -754,7 +1066,7 @@ def main():
     print("Running with checkpoints and time limit...")
     
     # Run in smaller chunks for checkpointing
-    chunk_size = min(50, args.checkpoint_interval)  # Smaller chunks for more frequent updates
+    chunk_size = min(5, args.checkpoint_interval)  # Smaller chunks for more frequent updates (was 50)
     n_chunks = args.nsteps // chunk_size
     remaining_steps = args.nsteps % chunk_size
     
@@ -766,19 +1078,32 @@ def main():
     # Track batch speed over time
     batch_speeds = []
     last_checkpoint_time = time.time()
+    start_chunk_time = time.time()  # Track when we started for accurate remaining time
+    
+    # Create progress tracking file
+    progress_log_file = os.path.join(results_dir, f"progress_log_{run_id}.txt")
+    with open(progress_log_file, 'w') as f:
+        f.write("Step,Epoch,Batch_Speed,Elapsed_Min,Remaining_Min,Memory_MB\n")
+    
+    print(f"\n{'=' * 80}")
+    print(f"{'Step':>6s} | {'Epoch':>6s} | {'Speed':>10s} | {'Elapsed':>8s} | {'Remain':>8s} | {'Mem(MB)':>8s}")
+    print(f"{'-' * 6} | {'-' * 6} | {'-' * 10} | {'-' * 8} | {'-' * 8} | {'-' * 8}")
     
     for i in range(n_chunks + (1 if remaining_steps > 0 else 0)):
         # Check if we've exceeded max runtime
         current_elapsed = time.time() - start_time
         if current_elapsed > max_runtime_seconds:
-            print(f"Maximum runtime of {args.max_time} minutes exceeded. Stopping.")
+            print(f"\nMaximum runtime of {args.max_time} minutes exceeded. Stopping MCMC.")
+            print(f"Time elapsed: {current_elapsed/60:.2f} minutes")
             
             # Save final checkpoint before stopping
             current_batch_speed = np.mean(batch_speeds) if batch_speeds else 0
-            save_intermediate_results(
+            saved_file = save_intermediate_results(
                 sampler, args.nburn, save_points_dir, f"mcmc_{run_id}", 
                 fixed_params, steps_completed, current_batch_speed, current_elapsed
             )
+            if saved_file:
+                print(f"Final checkpoint successfully saved to: {saved_file}")
             break
             
         # Determine steps for this chunk
@@ -789,46 +1114,81 @@ def main():
             
         # Run this chunk
         chunk_start = time.time()
-        print(f"Running chunk {i+1}/{n_chunks + (1 if remaining_steps > 0 else 0)}: "
-              f"{steps} steps ({steps_completed}/{total_steps} total)")
-        print(f"Elapsed time: {current_elapsed/60:.1f} min, Remaining: {(max_runtime_seconds-current_elapsed)/60:.1f} min")
         
-        current_pos, _, _ = sampler.run_mcmc(current_pos, steps, progress=True)
-        steps_completed += steps
+        try:
+            current_pos, _, _ = sampler.run_mcmc(current_pos, steps, progress=True)
+            steps_completed += steps
+            
+            # Calculate batch speed
+            chunk_time = time.time() - chunk_start
+            batch_speed = steps * nwalkers / chunk_time  # samples per second
+            batch_speeds.append(batch_speed)
+            current_batch_speed = batch_speed
+            
+            # Calculate estimated epoch (full passes through the dataset)
+            current_epoch = steps_completed / nwalkers
+            
+            # Calculate estimated remaining time
+            elapsed_min = (time.time() - start_chunk_time) / 60
+            remaining_steps_to_go = total_steps - steps_completed
+            if batch_speed > 0:
+                remaining_min = (remaining_steps_to_go * nwalkers) / (batch_speed * 60)
+            else:
+                remaining_min = float('inf')
+                
+            # Print progress in a structured table format
+            memory_mb = get_memory_usage()
+            progress_line = f"{steps_completed:6d} | {current_epoch:6.2f} | {batch_speed:10.1f} | {elapsed_min:8.2f} | {remaining_min:8.2f} | {memory_mb:8.1f}"
+            print(progress_line)
+            
+            # Save progress to log
+            with open(progress_log_file, 'a') as f:
+                f.write(f"{steps_completed},{current_epoch:.2f},{batch_speed:.1f},{elapsed_min:.2f},{remaining_min:.2f},{memory_mb:.1f}\n")
+            
+            # Garbage collection to prevent memory leaks
+            gc.collect()
+            
+            # Save checkpoint if needed or if enough time has passed
+            checkpoint_counter += steps
+            time_since_last_checkpoint = time.time() - last_checkpoint_time
+            
+            if (args.checkpoint_interval > 0 and checkpoint_counter >= args.checkpoint_interval) or time_since_last_checkpoint > 180:  # 3 minutes (was 5)
+                print(f"\nSaving checkpoint after {steps_completed} steps...")
+                saved_file = save_intermediate_results(
+                    sampler, args.nburn, save_points_dir, f"mcmc_{run_id}", 
+                    fixed_params, steps_completed, current_batch_speed, current_elapsed
+                )
+                if saved_file:
+                    print(f"Checkpoint successfully saved to: {saved_file}")
+                checkpoint_counter = 0
+                last_checkpoint_time = time.time()
+                print(f"\n{'Step':>6s} | {'Epoch':>6s} | {'Speed':>10s} | {'Elapsed':>8s} | {'Remain':>8s} | {'Mem(MB)':>8s}")
+                print(f"{'-' * 6} | {'-' * 6} | {'-' * 10} | {'-' * 8} | {'-' * 8} | {'-' * 8}")
         
-        # Calculate batch speed
-        chunk_time = time.time() - chunk_start
-        batch_speed = steps * nwalkers / chunk_time  # samples per second
-        batch_speeds.append(batch_speed)
-        current_batch_speed = batch_speed
-        
-        # Calculate estimated epoch (full passes through the dataset)
-        # In MCMC, this is the number of steps completed divided by the total number of walkers
-        current_epoch = steps_completed / nwalkers
-        
-        # Report on this chunk
-        print(f"  Completed chunk in {chunk_time:.2f}s "
-              f"({batch_speed:.1f} samples/s, "
-              f"~{(total_steps-steps_completed)/(steps/chunk_time)/60:.1f} minutes remaining)")
-        print(f"  Epoch: {current_epoch:.2f}, Batch speed: {batch_speed:.1f} samples/s")
-        
-        # Garbage collection to prevent memory leaks
-        gc.collect()
-        print_memory_usage(f"after chunk {i+1}")
-        
-        # Save checkpoint if needed or if enough time has passed
-        checkpoint_counter += steps
-        time_since_last_checkpoint = time.time() - last_checkpoint_time
-        
-        if (args.checkpoint_interval > 0 and checkpoint_counter >= args.checkpoint_interval) or time_since_last_checkpoint > 300:  # 5 minutes
-            print(f"Saving checkpoint after {steps_completed} steps...")
-            save_intermediate_results(
-                sampler, args.nburn, save_points_dir, f"mcmc_{run_id}", 
+        except KeyboardInterrupt:
+            print("\nMCMC interrupted by user. Saving current state and exiting.")
+            saved_file = save_intermediate_results(
+                sampler, args.nburn, save_points_dir, f"mcmc_{run_id}_interrupted", 
                 fixed_params, steps_completed, current_batch_speed, current_elapsed
             )
-            checkpoint_counter = 0
-            last_checkpoint_time = time.time()
-
+            if saved_file:
+                print(f"Interrupted state saved to: {saved_file}")
+            break
+        except Exception as e:
+            print(f"\nError during MCMC chunk: {e}")
+            print("Attempting to save current progress...")
+            try:
+                saved_file = save_intermediate_results(
+                    sampler, args.nburn, save_points_dir, f"mcmc_{run_id}_error", 
+                    fixed_params, steps_completed, current_batch_speed, current_elapsed
+                )
+                if saved_file:
+                    print(f"Error state saved to: {saved_file}")
+            except:
+                print("Could not save error state.")
+            raise
+    
+    print(f"\n{'=' * 80}")
     mcmc_time = time.time() - mcmc_start
     print("MCMC run complete.")
     print(f"MCMC execution time: {mcmc_time:.2f} seconds "
@@ -855,7 +1215,10 @@ def main():
         samples = sampler.get_chain(discard=args.nburn, thin=15, flat=True)
         print(f"Shape of processed samples: {samples.shape}") # Should be (N_samples, N_DIM)
 
-        if len(samples) < 10:
+        if len(samples) == 0:
+            print("ERROR: No valid samples after burn-in and thinning.")
+            print("Try reducing burn-in or increasing the number of steps.")
+        elif len(samples) < 10:
             print("WARNING: Very few samples after burn-in and thinning.")
             print("Consider reducing burn-in or increasing total steps.")
 
@@ -880,7 +1243,7 @@ def main():
             'parameter_labels': PARAM_LABELS,
             'mean_acceptance_fraction': float(acceptance_fraction),
             'execution_time_seconds': end_time - start_time,
-            'samples_shape': list(samples.shape),
+            'samples_shape': list(samples.shape) if len(samples) > 0 else [0, N_DIM],
             'test_mode': args.test_mode
         }
         info_file = os.path.join(results_dir, f"run_info_{run_id}.json")
@@ -894,110 +1257,81 @@ def main():
         # Calculate median and 1-sigma credible intervals (16th, 50th, 84th percentiles)
         results_summary = {}
         print("\n=== MCMC Parameter Estimates (median and 1-sigma credible interval) ===")
-        for i, label in enumerate(['omega', 'beta']):
-            mcmc = np.percentile(samples[:, i], [16, 50, 84])
-            q = np.diff(mcmc) # q[0] = 50th-16th, q[1] = 84th-50th
-            median = mcmc[1]
-            upper_err = q[1]
-            lower_err = q[0]
-            print(f"{PARAM_LABELS[i]} = {median:.4f} (+{upper_err:.4f} / -{lower_err:.4f})")
-            results_summary[label] = {'median': float(median), 
-                                     'upper_err': float(upper_err), 
-                                     'lower_err': float(lower_err)}
+        
+        # Handle case with no samples
+        if len(samples) == 0:
+            print("No valid samples to calculate statistics. Using initial values as placeholders.")
+            # Use initial values as placeholders
+            results_summary = {
+                'omega': {
+                    'median': float(args.initial_omega),
+                    'upper_err': 0.0,
+                    'lower_err': 0.0
+                },
+                'beta': {
+                    'median': float(args.initial_beta),
+                    'upper_err': 0.0,
+                    'lower_err': 0.0
+                }
+            }
+        else:
+            # Process samples normally if we have them
+            for i, label in enumerate(['omega', 'beta']):
+                if len(samples) >= 3:  # Need at least 3 samples for percentiles
+                    mcmc = np.percentile(samples[:, i], [16, 50, 84])
+                    q = np.diff(mcmc) # q[0] = 50th-16th, q[1] = 84th-50th
+                    median = mcmc[1]
+                    upper_err = q[1]
+                    lower_err = q[0]
+                    print(f"{PARAM_LABELS[i]} = {median:.4f} (+{upper_err:.4f} / -{lower_err:.4f})")
+                else:
+                    # If too few samples for percentiles, use mean and std
+                    median = float(np.mean(samples[:, i]))
+                    std = float(np.std(samples[:, i])) if len(samples) > 1 else 0.0
+                    upper_err = std
+                    lower_err = std
+                    print(f"{PARAM_LABELS[i]} = {median:.4f} (±{std:.4f})")
+                
+                results_summary[label] = {
+                    'median': median,
+                    'upper_err': upper_err,
+                    'lower_err': lower_err
+                }
 
-        # Save summary stats
-        stats_file = os.path.join(results_dir, f"param_stats_{run_id}.json")
-        with open(stats_file, 'w') as f:
+        # Save summary
+        summary_file = os.path.join(results_dir, f"mcmc_summary_{run_id}.json")
+        with open(summary_file, 'w') as f:
             json.dump(results_summary, f, indent=4)
-        print(f"Parameter stats saved to {stats_file}")
+        print(f"Summary saved to {summary_file}")
 
-        # Generate a corner plot using the corner library
-        print("\nGenerating corner plot...")
-        try:
-            figure = corner.corner(
-                samples, labels=PARAM_LABELS, # Use LaTeX labels
-                quantiles=[0.16, 0.5, 0.84],
-                show_titles=True, title_kwargs={"fontsize": 12},
-                truths=[results_summary['omega']['median'], results_summary['beta']['median']], # Show median values
-                truth_color='red'
-            )
-            corner_plot_file = os.path.join(results_dir, f"corner_plot_{run_id}.png")
-            figure.savefig(corner_plot_file)
-            print(f"Corner plot saved to {corner_plot_file}")
-        except ImportError:
-            print("\nInstall 'corner' package (`pip install corner`) to generate corner plots.")
-        except Exception as e:
-            print(f"Error during corner plot generation: {e}")
-
-        # Generate a markdown summary report
-        generate_validation_summary(results_summary, args, timestamp, suffix, acceptance_fraction)
+        # Generate corner plot
+        import matplotlib.pyplot as plt
+        fig = corner.corner(samples, labels=PARAM_LABELS, truths=[results_summary['omega']['median'], results_summary['beta']['median']])
+        plot_file = os.path.join(results_dir, f"corner_plot_{run_id}.png")
+        fig.savefig(plot_file)
+        print(f"Corner plot saved to {plot_file}")
 
     except Exception as e:
-        print(f"Error during MCMC results processing: {e}")
+        print(f"Error processing results: {e}")
         import traceback
         traceback.print_exc()
-        print("Chain data might still be saved if the run completed.")
 
-    print("\nMCMC parameter estimation script finished!")
-
-    # Final GPU cleanup
-    if HAS_GPU:
-        print("Performing final GPU memory cleanup...")
-        cp.get_default_memory_pool().free_all_blocks()
-
-def generate_validation_summary(results_summary, args, timestamp, suffix, acceptance_fraction):
-    """Generate a markdown summary of the MCMC parameter estimation"""
-    summary = [
-        "# Genesis-Sphere MCMC Parameter Estimation Report",
-        f"\n**Generated**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n",
-        "## Validation Method",
-        "\nThis validation uses Markov Chain Monte Carlo (MCMC) to estimate the posterior probability distribution",
-        "of Genesis-Sphere model parameters based on astronomical datasets. Unlike the previous grid search approach,",
-        "MCMC provides robust parameter uncertainties and explores the parameter space more efficiently.\n",
-        "## MCMC Settings",
-        f"\n- Walkers: {args.nwalkers}",
-        f"- Steps per walker: {args.nsteps}",
-        f"- Burn-in steps discarded: {args.nburn}",
-        f"- Initial parameter guess: ω={args.initial_omega:.4f}, β={args.initial_beta:.4f}",
-        f"- Fixed parameters: α={args.alpha:.4f}, ε={args.epsilon:.4f}",
-        f"- Mean acceptance fraction: {acceptance_fraction:.3f}\n",
-        "## Parameter Estimates",
-        "\nBest-fit parameters with 1-sigma (68%) credible intervals:",
-        f"\n| Parameter | Median | Lower Error | Upper Error |",
-        "|-----------|--------|-------------|-------------|",
-        f"| Omega (ω) | {results_summary['omega']['median']:.4f} | {results_summary['omega']['lower_err']:.4f} | {results_summary['omega']['upper_err']:.4f} |",
-        f"| Beta (β) | {results_summary['beta']['median']:.4f} | {results_summary['beta']['lower_err']:.4f} | {results_summary['beta']['upper_err']:.4f} |\n",
-        "## Corner Plot",
-        "\n![Parameter Corner Plot](corner_plot_" + f"{timestamp}{suffix}.png" + ")",
-        "\nThe corner plot shows the 1D and 2D posterior distributions of the model parameters.",
-        "Contours show the 1-sigma, 2-sigma, and 3-sigma credible regions.",
-        "\n## Interpretation",
-        "\nThe MCMC analysis shows that the optimal Genesis-Sphere parameters are:",
-        f"- **Omega (ω)**: {results_summary['omega']['median']:.4f} ± {(results_summary['omega']['lower_err'] + results_summary['omega']['upper_err'])/2:.4f}",
-        f"- **Beta (β)**: {results_summary['beta']['median']:.4f} ± {(results_summary['beta']['lower_err'] + results_summary['beta']['upper_err'])/2:.4f}",
-        "\nThese values represent the statistical constraints from combining H₀ correlation,",
-        "supernovae distance modulus fitting, and BAO signal detection. The uncertainties",
-        "reflect the genuine statistical uncertainty in determining these parameters from the available data.",
-        "\nCompared to the previous grid search approach, this MCMC analysis provides more robust",
-        "parameter constraints by thoroughly exploring the parameter space and quantifying uncertainties.",
-        "\n---",
-        "\n*This report was automatically generated by the Genesis-Sphere MCMC parameter estimation framework.*"
-    ]
-    
-    summary_path = os.path.join(results_dir, f"mcmc_summary_{timestamp}{suffix}.md")
-    with open(summary_path, 'w', encoding='utf-8') as f:
-        f.write('\n'.join(summary))
-    
-    print(f"Validation summary saved to: {summary_path}")
+    print("MCMC parameter estimation complete.")
 
 if __name__ == "__main__":
     try:
         # Force CuPy to initialize before we start to catch any startup errors
-        if HAS_GPU:
+        if CUPY_IMPORT_SUCCESS:
             print("Initializing GPU environment...")
             cp.array([1, 2, 3])  # Simple test array
-            cp.cuda.Stream.null.synchronize()  # Ensure initialization completes
-            print("GPU initialization complete.")
+            try:
+                cp.cuda.Stream.null.synchronize()  # Ensure initialization completes
+                print("GPU initialization complete.")
+            except Exception as e:
+                print(f"Warning: GPU synchronization failed. Error: {e}")
+                print("This suggests potential GPU driver or memory issues.")
+                print("Will attempt detailed verification...")
+                # Don't fail immediately - verify_gpu_operation will do more thorough checks
         
         main()
     except Exception as e:
@@ -1006,7 +1340,7 @@ if __name__ == "__main__":
         traceback.print_exc()
         
         # Cleanup GPU resources in case of error
-        if HAS_GPU:
+        if CUPY_IMPORT_SUCCESS:
             try:
                 cp.get_default_memory_pool().free_all_blocks()
                 print("GPU resources cleaned up after error.")
