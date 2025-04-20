@@ -360,6 +360,43 @@ python ned_validation.py --alpha 0.02 --beta 0.8 --omega 1.0 --epsilon 0.1
 python ned_validation.py --generate-plots
 ```
 
+### Parameter Sweep Validation (`parameter_sweep_validation.py`)
+
+**Purpose:** Systematically explores the parameter space to identify optimal parameter combinations for the Genesis-Sphere model against astronomical datasets.
+
+**Key Features:**
+- Conducts methodical sweeps around theoretically interesting parameter regions
+- Tests combinations against multiple astronomical datasets simultaneously 
+- Calculates combined performance metrics to identify best parameter sets
+- Generates comprehensive heatmap visualizations of parameter performance
+
+**Current Theoretical Optimal Point:**
+- **Omega (ω)**: 2.9000 - Angular frequency
+- **Beta (β)**: 0.3000 - Temporal damping factor
+- **Performance**: H₀ Correlation: -34.16%, Supernovae R²: -183.60%, BAO Effect Size: 38.29, Combined Score: -0.6711
+
+**Usage Example:**
+```bash
+# Run default parameter sweep (10x10 grid centered on ω=2.9, β=0.3)
+python parameter_sweep_validation.py
+
+# Run focused sweep with finer resolution around optimal point
+python parameter_sweep_validation.py --mode=focused
+
+# Run broad sweep to explore wider parameter space
+python parameter_sweep_validation.py --mode=broad
+
+# Custom parameter sweep
+python parameter_sweep_validation.py --center_omega=3.0 --center_beta=0.4 --steps_omega=12 --steps_beta=12
+```
+
+**Understanding Parameter Sweep Results:**
+The parameter sweep validation produces a comprehensive assessment of how different parameter combinations perform against multiple astronomical datasets. The current theoretical optimal point (ω=2.9, β=0.3) represents the best balance of performance metrics from our systematic exploration.
+
+While the negative H₀ correlation and supernovae R² values indicate areas where the model needs refinement, the strong BAO effect size suggests the model effectively captures important features of cosmic structure formation. These mixed results highlight the inherent challenge of simultaneously satisfying multiple observational constraints with a simplified mathematical model.
+
+Each parameter sweep generates detailed heatmap visualizations that show performance landscapes across the parameter space, helping to identify local and global optima as well as performance trends.
+
 ## Dataset Organization
 
 All datasets used by the validation scripts are stored in the `datasets` directory and include:

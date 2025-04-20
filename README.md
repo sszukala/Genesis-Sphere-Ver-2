@@ -480,13 +480,30 @@ python validation/cyclic_behavior_validation.py --omega 2.0 --beta 1.2
 
 > **Important Note on Parameter Optimization Approaches**: 
 > 
-> The Genesis-Sphere framework has been validated using two different optimization approaches:
+> The Genesis-Sphere framework has been validated using multiple optimization and parameter sweep approaches:
 > 
-> 1. **Theoretical Cyclic Behavior Optimization** (above): Parameters (ω=2.0, β=1.2) were optimized to maximize mathematical properties essential for cyclic universe models (phantom divide crossings, precise period control, etc.). These parameters also show excellent correlation with astronomical observations.
+> 1. **Theoretical Cyclic Behavior Optimization**: Parameters (ω=2.0, β=1.2) were optimized to maximize mathematical properties essential for cyclic universe models. These parameters show excellent correlation with astronomical observations.
 > 
-> 2. **Raw Astronomical Data Fitting** (below): A separate optimization approach (resulting in α=0.1000, β=0.2712, ω=4.1702, ε=0.0100) attempted to directly fit raw astronomical datasets without prioritizing theoretical cyclic properties. While this approach showed strong BAO detection, it performed poorly on other metrics.
+> 2. **Raw Astronomical Data Fitting**: A separate optimization approach (resulting in α=0.1000, β=0.2712, ω=4.1702, ε=0.0100) attempted to directly fit raw astronomical datasets without prioritizing theoretical cyclic properties. This showed strong BAO detection but performed poorly on other metrics.
 > 
-> **Recommended Parameters**: The theoretical cyclic behavior parameters (ω=2.0, β=1.2) provide superior overall performance and should be preferred for most applications. Future work will focus on combining the strengths of both approaches.
+> 3. **Parameter Sweep Validation**: Our most recent comprehensive sweep (centered around ω=2.6, β=0.6 with 100 combinations) identified a new theoretical optimal point (ω=2.9, β=0.3) that offers improved performance on combined astronomical metrics.
+> 
+> **Current Theoretical Optimal Point:**
+> 
+> | Parameter | Value | Description |
+> |-----------|-------|-------------|
+> | Omega (ω) | 2.9000 | Angular frequency |
+> | Beta (β)  | 0.3000 | Temporal damping factor |
+> 
+> **Performance Metrics:**
+> - H₀ Correlation: -34.16%
+> - Supernovae R²: -183.60%
+> - BAO Effect Size: 38.29
+> - Combined Score: -0.6711
+> 
+> This parameter combination represents the best empirical fit found through our systematic parameter space exploration. The negative correlation with H₀ measurements and negative R² for supernovae indicate areas for continued theoretical development, while the strong BAO effect size suggests the model effectively captures some important features of cosmic structure formation. Future validation work will focus on reconciling these diverse observational constraints.
+> 
+> **Recommended Parameters**: For theoretical work requiring cyclic behavior, we still recommend the cyclic-optimized parameters (ω=2.0, β=1.2). For applications prioritizing BAO signal strength, the new theoretical optimal point (ω=2.9, β=0.3) may be preferred.
 
 ### 📊 Celestial Correlation Validation Results
 
