@@ -1,16 +1,16 @@
 # Genesis-Sphere Parameter Sweep Validation Report
 
-**Generated**: 2025-04-20 09:07:41
+**Generated**: 2025-04-20 09:20:22
 
 ## Validation Purpose
 
 This validation performs a parameter sweep around potentially optimal parameters 
-(centered near ω=2.60, β=0.60) to verify performance against astronomical datasets.
+(centered near ω=2.90, β=0.30) to verify performance against astronomical datasets.
 
 ## Parameter Ranges Tested
 
-- Omega (ω): 2.30 to 2.90 (10 steps)
-- Beta (β): 0.30 to 0.90 (10 steps)
+- Omega (ω): 2.30 to 3.50 (10 steps)
+- Beta (β): -0.30 to 0.90 (10 steps)
 - Total Combinations Tested: 100
 
 ## Best Parameter Combination Found in Sweep
@@ -19,49 +19,49 @@ Based on combined performance across H₀ correlation, supernovae distance modul
 
 | Parameter | Value | Description |
 |-----------|-------|-------------|
-| Omega (ω) | 2.9000 | Angular frequency |
-| Beta (β) | 0.3000 | Temporal damping factor |
+| Omega (ω) | 3.5000 | Angular frequency |
+| Beta (β) | -0.0333 | Temporal damping factor |
 | Alpha (α) | 0.0200 | Spatial dimension expansion coefficient |
 | Epsilon (ε) | 0.1000 | Zero-prevention constant |
 
 ### Performance Metrics
 
-- H₀ Correlation: -34.16%
-- Supernovae R²: -183.60%
-- BAO Effect Size: 38.29
-- Combined Score: -0.6711
+- H₀ Correlation: -15.39%
+- Supernovae R²: -9.61%
+- BAO Effect Size: 13.42
+- Combined Score: 0.1000
 
 ## Performance at Parameters Closest to Sweep Center
 
-Performance at parameters closest to the sweep center (ω=2.60, β=0.60):
+Performance at parameters closest to the sweep center (ω=2.90, β=0.30):
 
 | Parameter | Value | Description |
 |-----------|-------|-------------|
-| Omega (ω) | 2.5667 | Angular frequency |
-| Beta (β) | 0.5667 | Temporal damping factor |
+| Omega (ω) | 2.8333 | Angular frequency |
+| Beta (β) | 0.2333 | Temporal damping factor |
 | Alpha (α) | 0.0200 | Spatial dimension expansion coefficient |
 | Epsilon (ε) | 0.1000 | Zero-prevention constant |
 
 ### Performance Metrics
 
-- H₀ Correlation: -31.41%
-- Supernovae R²: -304.42%
-- BAO Effect Size: 35.69
-- Combined Score: -1.1433
+- H₀ Correlation: -40.13%
+- Supernovae R²: -149.55%
+- BAO Effect Size: 29.70
+- Combined Score: -0.5587
 
 ## Comparison: Best Found vs. Sweep Center
 
 This comparison highlights the difference between the best parameters found in the sweep and the parameters closest to the sweep's starting center point.
 
-- **Parameter Distance**: Euclidean distance between (ω, β) points = 0.0471
-- **Combined Score Difference**: 0.4723 (Higher is better for 'Best Found')
-- **H₀ Correlation Difference**: -2.76%
-- **Supernovae R² Difference**: 120.82%
-- **BAO Effect Size Difference**: 2.60
+- **Parameter Distance**: Euclidean distance between (ω, β) points = 0.0943
+- **Combined Score Difference**: 0.6587 (Higher is better for 'Best Found')
+- **H₀ Correlation Difference**: 24.74%
+- **Supernovae R² Difference**: 139.94%
+- **BAO Effect Size Difference**: -16.28
 
 ### Interpretation of Comparison
 
-The best parameters found (ω=2.90, β=0.30) are significantly different from the sweep center (ω=2.60, β=0.60) and provide a notably different performance score (+0.4723). This suggests the optimal parameters may lie towards the edge or outside of the current sweep range, warranting further investigation in that direction.
+The best parameters found (ω=3.50, β=-0.03) are significantly different from the sweep center (ω=2.90, β=0.30) and provide a notably different performance score (+0.6587). This suggests the optimal parameters may lie towards the edge or outside of the current sweep range, warranting further investigation in that direction.
 
 ## Visualizations
 

@@ -1,19 +1,26 @@
 """
-Parameter sweep validation to confirm optimal parameters for the Genesis-Sphere model.
-This script runs multiple validations around the theoretically optimal parameters
-(ω=2.0, β=1.2) to verify they provide the best fit for astronomical datasets.
+Parameter estimation using MCMC for the Genesis-Sphere model.
+
+This script uses MCMC to explore the parameter space (ω, β) and find the
+posterior probability distribution based on astronomical datasets.
+It replaces the previous grid search and custom combined score with a
+statistically robust approach.
+
+NOTE: Requires modification of analysis functions to return log-likelihoods
+      or chi-squared values. Requires installation of 'emcee' and 'corner'.
+      (pip install emcee corner numpy pandas)
 """
 
 import os
 import sys
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-import subprocess
+import emcee # MCMC sampler
+import corner # For plotting results
 from datetime import datetime
 import json
 import argparse
+import time # To time execution
 
 # Add parent directory to path
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -23,485 +30,345 @@ sys.path.insert(0, parent_dir)
 results_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results', 'parameter_sweep')
 os.makedirs(results_dir, exist_ok=True)
 
-def run_validation_with_parameters(omega, beta, alpha=0.02, epsilon=0.1):
-    """
-    Run celestial_correlation_validation.py with specified parameters
-    and capture the metrics.
+try:
+    from models.genesis_model import GenesisSphereModel
+    from validation.celestial_correlation_validation import (
+        load_h0_measurements,
+        load_supernovae_data,
+        load_bao_data,
+        analyze_h0_correlation,
+        analyze_sne_fit,
+        analyze_bao_detection
+    )
+except ImportError as e:
+    print(f"Error importing necessary modules: {e}")
+    print("Please ensure 'models' and 'validation' directories are accessible"
+          " relative to the script's parent directory and contain the required files/functions.")
+    sys.exit(1)
+except FileNotFoundError:
+     print("Error: Could not determine parent directory reliably. "
+           "Ensure script structure allows importing 'models' and 'validation'.")
+     sys.exit(1)
+
+# --- Helper functions to calculate chi-squared from existing analysis functions ---
+
+def calculate_h0_chi2(gs_model, h0_data):
+    """Calculate chi-squared for H0 correlation"""
+    metrics = analyze_h0_correlation(gs_model, h0_data)
+    # Convert correlation to chi-squared
+    # For correlation coefficient r, we can use -N*log(1-r²) as an approximation
+    # This makes better correlation (r close to 1) give lower chi-squared
+    r = metrics['correlation']
+    n = len(h0_data)
+    chi2 = -n * np.log(1 - r**2) if abs(r) < 1.0 else 1000
+    # Invert the sign since better correlation should give lower chi-squared
+    return 1000 - chi2 if np.isfinite(chi2) else 1000
+
+def calculate_sne_chi2(gs_model, sne_data):
+    """Calculate chi-squared for supernovae fit"""
+    metrics = analyze_sne_fit(gs_model, sne_data)
+    # Use the reduced chi-squared metric directly if available
+    if 'reduced_chi2' in metrics:
+        return metrics['reduced_chi2'] * (len(sne_data) - 2)  # Convert reduced chi2 to raw chi2
     
-    Parameters:
-    -----------
-    omega : float
-        Angular frequency
-    beta : float
-        Temporal damping factor
-    alpha : float, optional
-        Spatial dimension expansion coefficient
-    epsilon : float, optional
-        Zero-prevention constant
-        
-    Returns:
-    --------
-    dict
-        Dictionary containing validation metrics
+    # Alternatively use R-squared
+    r_squared = metrics['r_squared']
+    # Transform R² to a chi-squared-like metric (lower is better)
+    # When R² is close to 1 (good fit), this gives a small value
+    chi2_approx = len(sne_data) * (1 - r_squared) if r_squared <= 1.0 else len(sne_data) * 2
+    return chi2_approx
+
+def calculate_bao_chi2(gs_model, bao_data):
+    """Calculate chi-squared for BAO detection"""
+    metrics = analyze_bao_detection(gs_model, bao_data)
+    # For effect size, a larger value is better
+    # Convert to a chi-squared-like value (lower is better)
+    effect_size = metrics['high_z_effect_size']
+    max_expected = 100  # A reasonable maximum to scale against
+    # Normalize so that higher effect size gives lower chi-squared
+    chi2_approx = max_expected - min(effect_size, max_expected)
+    return chi2_approx
+
+# === MCMC Setup ===
+
+# Define the parameter space (dimensions)
+# We are fitting for omega and beta
+N_DIM = 2
+PARAM_LABELS = [r"$\omega$", r"$\beta$"] # LaTeX labels for plots
+
+# Define the prior function - sets allowed parameter ranges
+def log_prior(params):
     """
-    print(f"Running validation with ω={omega:.2f}, β={beta:.2f}...")
-    
+    Log prior probability distribution (Log(Prior)).
+    Returns 0 if params are within allowed ranges, -np.inf otherwise.
+    This enforces constraints on parameters.
+    """
+    omega, beta = params
+    # Define parameter ranges based on previous search results
+    # Extended range that includes the previous optima
+    if 1.0 < omega < 6.0 and -1.0 < beta < 3.0: 
+        return 0.0 # Log(1) = 0 -> uniform prior within bounds
+    return -np.inf # Log(0) -> rules out parameters outside bounds
+
+# Define the log-likelihood function - compares model to data
+def log_likelihood(params, data_h0, data_sne, data_bao, fixed_alpha, fixed_epsilon):
+    """
+    Log likelihood function (Log(Likelihood)).
+    Calculates the total likelihood of observing the data given the parameters.
+    """
+    omega, beta = params
+    alpha = fixed_alpha
+    epsilon = fixed_epsilon
+
+    # Check prior first (can sometimes save computation)
+    if not np.isfinite(log_prior(params)):
+         return -np.inf
+
     try:
-        from validation.celestial_correlation_validation import load_h0_measurements, load_supernovae_data, load_bao_data
-        from validation.celestial_correlation_validation import analyze_h0_correlation, analyze_sne_fit, analyze_bao_detection
-        from models.genesis_model import GenesisSphereModel
-        
+        # Create model instance with current parameters
+        gs_model = GenesisSphereModel(alpha=alpha, beta=beta, omega=omega, epsilon=epsilon)
+
+        # Calculate chi-squared for each dataset
+        chi2_h0 = calculate_h0_chi2(gs_model, data_h0)
+        chi2_sne = calculate_sne_chi2(gs_model, data_sne)
+        chi2_bao = calculate_bao_chi2(gs_model, data_bao)
+
+        # Weight the different components
+        # Adjust weights based on which datasets you consider more reliable/important
+        total_chi2 = (0.4 * chi2_h0 + 0.4 * chi2_sne + 0.2 * chi2_bao)
+
+        # Convert total Chi-squared to Log Likelihood (assuming Gaussian errors)
+        logL = -0.5 * total_chi2
+
+        # Check for NaN or infinite results which can break MCMC
+        if not np.isfinite(logL):
+             print(f"Warning: Non-finite logL ({logL}) for ω={omega:.4f}, β={beta:.4f}")
+             return -np.inf
+
+        return logL
+
+    except Exception as e:
+        # Handle potential errors during model calculation or analysis
+        print(f"Warning: Likelihood calculation failed for ω={omega:.4f}, β={beta:.4f}. Error: {e}")
+        return -np.inf
+
+# Define the log-posterior function (Prior + Likelihood)
+def log_posterior(params, data_h0, data_sne, data_bao, fixed_alpha, fixed_epsilon):
+    """
+    Log posterior probability distribution (Log(Prior) + Log(Likelihood)).
+    This is the function the MCMC sampler explores.
+    """
+    lp = log_prior(params)
+    if not np.isfinite(lp): # If parameters are outside prior range
+        return -np.inf
+    # Log(Posterior) = Log(Prior) + Log(Likelihood)
+    return lp + log_likelihood(params, data_h0, data_sne, data_bao, fixed_alpha, fixed_epsilon)
+
+# === Main Execution ===
+
+def main():
+    """Main function to run the MCMC parameter estimation"""
+    start_time = time.time()
+    parser = argparse.ArgumentParser(description="Run MCMC parameter estimation for Genesis-Sphere")
+    # Add arguments for fixed parameters, data paths, MCMC settings, etc.
+    parser.add_argument("--alpha", type=float, default=0.02, help="Fixed alpha value")
+    parser.add_argument("--epsilon", type=float, default=0.1, help="Fixed epsilon value")
+    parser.add_argument("--nwalkers", type=int, default=32, help="Number of MCMC walkers (must be > 2*N_DIM)")
+    parser.add_argument("--nsteps", type=int, default=5000, help="Number of MCMC steps per walker")
+    parser.add_argument("--nburn", type=int, default=1000, help="Number of burn-in steps to discard")
+    parser.add_argument("--initial_omega", type=float, default=3.5, help="Initial guess for omega")
+    parser.add_argument("--initial_beta", type=float, default=-0.0333, help="Initial guess for beta")
+    parser.add_argument("--output_suffix", type=str, default="", help="Optional suffix for output filenames")
+
+    args = parser.parse_args()
+
+    # Validate walker count
+    if args.nwalkers <= 2 * N_DIM:
+        print(f"Error: Number of walkers ({args.nwalkers}) must be greater than 2 * N_DIM ({2*N_DIM}).")
+        sys.exit(1)
+    if args.nsteps <= args.nburn:
+        print(f"Error: Total steps ({args.nsteps}) must be greater than burn-in steps ({args.nburn}).")
+        sys.exit(1)
+
+
+    print("Starting Genesis-Sphere MCMC Parameter Estimation...")
+    print(f"Fixed Parameters: α={args.alpha}, ε={args.epsilon}")
+    print(f"MCMC Settings: Walkers={args.nwalkers}, Steps={args.nsteps}, Burn-in={args.nburn}")
+
+    # --- Load Data ---
+    print("Loading observational data...")
+    try:
         h0_data = load_h0_measurements()
         sne_data = load_supernovae_data()
         bao_data = load_bao_data()
-        
-        gs_model = GenesisSphereModel(alpha=alpha, beta=beta, omega=omega, epsilon=epsilon)
-        
-        h0_metrics = analyze_h0_correlation(gs_model, h0_data)
-        sne_metrics = analyze_sne_fit(gs_model, sne_data)
-        bao_metrics = analyze_bao_detection(gs_model, bao_data)
-        
-        return {
-            'omega': omega,
-            'beta': beta,
-            'alpha': alpha,
-            'epsilon': epsilon,
-            'h0_correlation': h0_metrics['correlation'],
-            'sne_r_squared': sne_metrics['r_squared'],
-            'sne_reduced_chi2': sne_metrics['reduced_chi2'],
-            'bao_high_z_effect_size': bao_metrics['high_z_effect_size'],
-            'bao_r_squared': bao_metrics['r_squared'],
-            'combined_score': (
-                0.4 * h0_metrics['correlation'] + 
-                0.4 * sne_metrics['r_squared'] + 
-                0.2 * min(1.0, bao_metrics['high_z_effect_size']/10)  
-            )
-        }
+        print("Data loaded successfully.")
     except Exception as e:
-        print(f"Error in direct import method: {e}")
-        print("Falling back to subprocess method...")
-        
-        cmd = [
-            sys.executable,
-            os.path.join(os.path.dirname(os.path.abspath(__file__)), 'celestial_correlation_validation.py'),
-            f"--omega={omega}",
-            f"--beta={beta}",
-            f"--alpha={alpha}",
-            f"--epsilon={epsilon}",
-            "--metrics-only"  
-        ]
-        
-        try:
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-            metrics = json.loads(result.stdout)
-            return metrics
-        except subprocess.CalledProcessError as e:
-            print(f"Validation failed with error: {e}")
-            print(f"Error output: {e.stderr}")
-            return {
-                'omega': omega,
-                'beta': beta,
-                'alpha': alpha,
-                'epsilon': epsilon,
-                'h0_correlation': -1.0,
-                'sne_r_squared': -1.0,
-                'bao_high_z_effect_size': 0.0,
-                'combined_score': -1.0
-            }
+        print(f"Error loading data: {e}")
+        sys.exit(1)
 
-def perform_parameter_sweep(omega_range, beta_range, alpha=0.02, epsilon=0.1):
-    """
-    Perform a parameter sweep across specified ranges of ω and β.
-    
-    Parameters:
-    -----------
-    omega_range : tuple
-        Range of omega values as (start, end, num)
-    beta_range : tuple
-        Range of beta values as (start, end, num)
-    alpha : float
-        Fixed alpha value
-    epsilon : float
-        Fixed epsilon value
-        
-    Returns:
-    --------
-    DataFrame
-        Results of all validation runs
-    """
-    omega_values = np.linspace(*omega_range)
-    beta_values = np.linspace(*beta_range)
-    
-    results = []
-    
-    total_combinations = len(omega_values) * len(beta_values)
-    current = 0
-    
-    for omega in omega_values:
-        for beta in beta_values:
-            current += 1
-            print(f"Running combination {current}/{total_combinations}: ω={omega:.4f}, β={beta:.4f}")
-            metrics = run_validation_with_parameters(omega, beta, alpha, epsilon)
-            results.append(metrics)
-    
-    df = pd.DataFrame(results)
-    
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    results_file = os.path.join(results_dir, f"parameter_sweep_{timestamp}.csv")
-    df.to_csv(results_file, index=False)
-    print(f"Results saved to {results_file}")
-    
-    return df
+    # --- Initialize Walkers ---
+    # Start walkers in a small Gaussian ball around the previous best parameters
+    initial_pos_guess = np.array([args.initial_omega, args.initial_beta])
+    # Add small random offsets for each walker, ensuring they are within priors
+    pos = np.zeros((args.nwalkers, N_DIM))
+    for i in range(args.nwalkers):
+        # Keep generating random starting points until they satisfy the prior
+        while True:
+            p = initial_pos_guess + 1e-3 * np.abs(initial_pos_guess) * np.random.randn(N_DIM)
+            if np.isfinite(log_prior(p)):
+                pos[i] = p
+                break
+    nwalkers, ndim = pos.shape
+    print(f"Initialized {nwalkers} walkers around ω={args.initial_omega}, β={args.initial_beta}")
 
-def analyze_parameter_sweep(results_df, theoretical_optimal_params):
-    """
-    Analyze parameter sweep results and generate visualizations.
-    
-    Parameters:
-    -----------
-    results_df : DataFrame
-        Results from parameter sweep
-    theoretical_optimal_params : dict
-        Dictionary containing the theoretical optimal parameters {'omega', 'beta', 'alpha', 'epsilon'}
-        
-    Returns:
-    --------
-    dict
-        Containing 'best_params' dict and 'theoretical_optimal_metrics' dict (or None)
-    """
-    best_idx = results_df['combined_score'].idxmax()
-    best_params = results_df.iloc[best_idx].to_dict() 
-    
-    print("\n=== Best Parameter Combination Found ===")
-    print(f"ω = {best_params['omega']:.4f}")
-    print(f"β = {best_params['beta']:.4f}")
-    print(f"H₀ Correlation: {best_params['h0_correlation']*100:.2f}%")
-    print(f"Supernovae R²: {best_params['sne_r_squared']*100:.2f}%")
-    print(f"BAO Effect Size: {best_params['bao_high_z_effect_size']:.2f}")
-    print(f"Combined Score: {best_params['combined_score']:.4f}")
-    
-    theoretical_omega = theoretical_optimal_params['omega']
-    theoretical_beta = theoretical_optimal_params['beta']
-    
-    results_df['dist_to_theory'] = np.sqrt(
-        (results_df['omega'] - theoretical_omega)**2 + 
-        (results_df['beta'] - theoretical_beta)**2
+
+    # --- Run MCMC ---
+    print(f"Running MCMC...")
+    # The 'args' tuple passes fixed parameters and data to the log_posterior function
+    sampler = emcee.EnsembleSampler(
+        nwalkers, ndim, log_posterior, args=(h0_data, sne_data, bao_data, args.alpha, args.epsilon)
     )
-    
-    closest_idx = results_df['dist_to_theory'].idxmin()
-    theoretical_optimal_metrics = results_df.iloc[closest_idx].to_dict() 
-    
-    if theoretical_optimal_metrics['dist_to_theory'] < 0.5: 
-        print(f"\n=== Performance at Parameters Closest to Theoretical Optimal (ω={theoretical_omega:.4f}, β={theoretical_beta:.4f}) ===")
-        print(f"Actual ω = {theoretical_optimal_metrics['omega']:.4f}")
-        print(f"Actual β = {theoretical_optimal_metrics['beta']:.4f}")
-        print(f"H₀ Correlation: {theoretical_optimal_metrics['h0_correlation']*100:.2f}%")
-        print(f"Supernovae R²: {theoretical_optimal_metrics['sne_r_squared']*100:.2f}%")
-        print(f"BAO Effect Size: {theoretical_optimal_metrics['bao_high_z_effect_size']:.2f}")
-        print(f"Combined Score: {theoretical_optimal_metrics['combined_score']:.4f}")
-    else:
-        print(f"\nTheoretical optimal parameters (ω={theoretical_omega:.1f}, β={theoretical_beta:.1f}) were not closely sampled in this sweep.")
-        theoretical_optimal_metrics = None 
-        
-    print("\nGenerating combined score heatmap...", end="", flush=True)
-    plt.figure(figsize=(12, 10))
-    
-    pivot_data = results_df.pivot(index="beta", columns="omega", values="combined_score")
-    
-    ax = sns.heatmap(pivot_data, cmap="viridis", annot=True, fmt=".3f")
-    ax.invert_yaxis()  
-    
-    mark_params(ax, best_params['omega'], best_params['beta'], "Best", color='red')
-    
-    if theoretical_optimal_metrics is not None:
-        mark_params(ax, theoretical_optimal_metrics['omega'], theoretical_optimal_metrics['beta'], "Theory", color='blue')
-    
-    plt.title("Combined Score by Parameter Combination")
-    plt.tight_layout()
-    
-    heatmap_file = os.path.join(results_dir, "combined_score_heatmap.png")
-    plt.savefig(heatmap_file, dpi=150)
-    print(f" Done! Saved to {heatmap_file}")
-    
-    for metric in ['h0_correlation', 'sne_r_squared', 'bao_high_z_effect_size']:
-        create_metric_heatmap(results_df, metric, best_params, theoretical_optimal_metrics) 
-    
-    return {
-        'best_params': best_params,
-        'theoretical_optimal_metrics': theoretical_optimal_metrics
-    }
 
-def mark_params(ax, omega, beta, label, color='red'):
-    """Mark specific parameters on a heatmap plot"""
+    # Run MCMC steps and show progress
+    sampler.run_mcmc(pos, args.nsteps, progress=True)
+    print("MCMC run complete.")
+    end_time = time.time()
+    print(f"Total execution time: {end_time - start_time:.2f} seconds")
+
+    # --- Process Results ---
     try:
-        omega_idx = ax.get_xticklabels()
-        beta_idx = ax.get_yticklabels()
-        
-        omega_pos = min(range(len(omega_idx)), key=lambda i: abs(float(omega_idx[i].get_text()) - omega))
-        beta_pos = min(range(len(beta_idx)), key=lambda i: abs(float(beta_idx[i].get_text()) - beta))
-        
-        ax.add_patch(plt.Circle((omega_pos + 0.5, beta_pos + 0.5), 0.4, fill=False, edgecolor=color, lw=2))
-        ax.text(omega_pos + 0.5, beta_pos + 0.5, label, ha='center', va='center', color=color, fontweight='bold')
+        # Check acceptance fraction (should generally be between ~0.2 and 0.5)
+        acceptance_fraction = np.mean(sampler.acceptance_fraction)
+        print(f"Mean acceptance fraction: {acceptance_fraction:.3f}")
+
+        # Discard burn-in steps and flatten the chain
+        # flat=True combines results from all walkers
+        # thin=X keeps only every Xth sample to reduce autocorrelation
+        samples = sampler.get_chain(discard=args.nburn, thin=15, flat=True)
+        print(f"Shape of processed samples: {samples.shape}") # Should be (N_samples, N_DIM)
+
+        # --- Save Results ---
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        suffix = f"_{args.output_suffix}" if args.output_suffix else ""
+
+        # Save the samples (the chain)
+        chain_file = os.path.join(results_dir, f"mcmc_chain_{timestamp}{suffix}.csv")
+        df_samples = pd.DataFrame(samples, columns=['omega', 'beta'])
+        df_samples.to_csv(chain_file, index=False)
+        print(f"MCMC samples saved to {chain_file}")
+
+        # Save run info (parameters, settings)
+        run_info = {
+            'timestamp': timestamp,
+            'fixed_alpha': args.alpha,
+            'fixed_epsilon': args.epsilon,
+            'nwalkers': args.nwalkers,
+            'nsteps': args.nsteps,
+            'nburn': args.nburn,
+            'initial_guess': {'omega': args.initial_omega, 'beta': args.initial_beta},
+            'parameter_labels': PARAM_LABELS,
+            'mean_acceptance_fraction': acceptance_fraction,
+            'execution_time_seconds': end_time - start_time
+        }
+        info_file = os.path.join(results_dir, f"run_info_{timestamp}{suffix}.json")
+        with open(info_file, 'w') as f:
+            json.dump(run_info, f, indent=4)
+        print(f"Run info saved to {info_file}")
+
+
+        # --- Basic Analysis & Plotting ---
+        print("\nAnalyzing MCMC results...")
+
+        # Calculate median and 1-sigma credible intervals (16th, 50th, 84th percentiles)
+        results_summary = {}
+        print("\n=== MCMC Parameter Estimates (median and 1-sigma credible interval) ===")
+        for i, label in enumerate(['omega', 'beta']):
+            mcmc = np.percentile(samples[:, i], [16, 50, 84])
+            q = np.diff(mcmc) # q[0] = 50th-16th, q[1] = 84th-50th
+            median = mcmc[1]
+            upper_err = q[1]
+            lower_err = q[0]
+            print(f"{PARAM_LABELS[i]} = {median:.4f} (+{upper_err:.4f} / -{lower_err:.4f})")
+            results_summary[label] = {'median': median, 'upper_err': upper_err, 'lower_err': lower_err}
+
+        # Save summary stats
+        stats_file = os.path.join(results_dir, f"param_stats_{timestamp}{suffix}.json")
+        with open(stats_file, 'w') as f:
+            json.dump(results_summary, f, indent=4)
+        print(f"Parameter stats saved to {stats_file}")
+
+
+        # Generate a corner plot using the corner library
+        print("\nGenerating corner plot...")
+        try:
+            figure = corner.corner(
+                samples, labels=PARAM_LABELS, # Use LaTeX labels
+                quantiles=[0.16, 0.5, 0.84],
+                show_titles=True, title_kwargs={"fontsize": 12},
+                truths=[results_summary['omega']['median'], results_summary['beta']['median']], # Show median values
+                truth_color='red'
+            )
+            corner_plot_file = os.path.join(results_dir, f"corner_plot_{timestamp}{suffix}.png")
+            figure.savefig(corner_plot_file)
+            print(f"Corner plot saved to {corner_plot_file}")
+        except ImportError:
+            print("\nInstall 'corner' package (`pip install corner`) to generate corner plots.")
+        except Exception as e:
+            print(f"Error during corner plot generation: {e}")
+
+        # Generate a markdown summary report
+        generate_validation_summary(results_summary, args, timestamp, suffix, acceptance_fraction)
+
     except Exception as e:
-        print(f"Could not mark parameters: {e}")
+        print(f"Error during MCMC results processing: {e}")
+        print("Chain data might still be saved if the run completed.")
 
-def create_metric_heatmap(results_df, metric, best_params, theoretical_optimal_metrics):
-    """Create a heatmap for a specific metric"""
-    print(f"\nGenerating {metric} heatmap...", end="", flush=True)
-    
-    plt.figure(figsize=(12, 10))
-    
-    pivot_data = results_df.pivot(index="beta", columns="omega", values=metric)
-    
-    ax = sns.heatmap(pivot_data, cmap="viridis", annot=True, fmt=".3f")
-    ax.invert_yaxis() 
-    
-    mark_params(ax, best_params['omega'], best_params['beta'], "Best", color='red')
-    
-    if theoretical_optimal_metrics is not None:
-        mark_params(ax, theoretical_optimal_metrics['omega'], theoretical_optimal_metrics['beta'], "Theory", color='blue')
-        
-    plt.title(f"{metric.replace('_', ' ').title()} by Parameter Combination")
-    plt.tight_layout()
-    
-    heatmap_file = os.path.join(results_dir, f"{metric}_heatmap.png")
-    plt.savefig(heatmap_file, dpi=150)
-    print(f" Done! Saved to {heatmap_file}")
-    plt.close()
+    print("\nMCMC parameter estimation script finished!")
 
-def generate_validation_summary(results_df, best_params, theoretical_optimal_metrics, sweep_center_params):
-    """Generate a markdown summary of the parameter sweep validation"""
+def generate_validation_summary(results_summary, args, timestamp, suffix, acceptance_fraction):
+    """Generate a markdown summary of the MCMC parameter estimation"""
     summary = [
-        "# Genesis-Sphere Parameter Sweep Validation Report",
+        "# Genesis-Sphere MCMC Parameter Estimation Report",
         f"\n**Generated**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n",
-        "## Validation Purpose",
-        "\nThis validation performs a parameter sweep around potentially optimal parameters ",
-        f"(centered near ω={sweep_center_params['omega']:.2f}, β={sweep_center_params['beta']:.2f}) to verify performance against astronomical datasets.\n",
-        "## Parameter Ranges Tested",
-        f"\n- Omega (ω): {results_df['omega'].min():.2f} to {results_df['omega'].max():.2f} ({len(results_df['omega'].unique())} steps)",
-        f"- Beta (β): {results_df['beta'].min():.2f} to {results_df['beta'].max():.2f} ({len(results_df['beta'].unique())} steps)",
-        f"- Total Combinations Tested: {len(results_df)}\n",
-        "## Best Parameter Combination Found in Sweep",
-        "\nBased on combined performance across H₀ correlation, supernovae distance modulus fitting, and BAO signal detection:",
-        f"\n| Parameter | Value | Description |",
-        "|-----------|-------|-------------|",
-        f"| Omega (ω) | {best_params['omega']:.4f} | Angular frequency |",
-        f"| Beta (β) | {best_params['beta']:.4f} | Temporal damping factor |",
-        f"| Alpha (α) | {best_params['alpha']:.4f} | Spatial dimension expansion coefficient |",
-        f"| Epsilon (ε) | {best_params['epsilon']:.4f} | Zero-prevention constant |\n",
-        "### Performance Metrics",
-        f"\n- H₀ Correlation: {best_params['h0_correlation']*100:.2f}%",
-        f"- Supernovae R²: {best_params['sne_r_squared']*100:.2f}%",
-        f"- BAO Effect Size: {best_params['bao_high_z_effect_size']:.2f}",
-        f"- Combined Score: {best_params['combined_score']:.4f}\n"
+        "## Validation Method",
+        "\nThis validation uses Markov Chain Monte Carlo (MCMC) to estimate the posterior probability distribution",
+        "of Genesis-Sphere model parameters based on astronomical datasets. Unlike the previous grid search approach,",
+        "MCMC provides robust parameter uncertainties and explores the parameter space more efficiently.\n",
+        "## MCMC Settings",
+        f"\n- Walkers: {args.nwalkers}",
+        f"- Steps per walker: {args.nsteps}",
+        f"- Burn-in steps discarded: {args.nburn}",
+        f"- Initial parameter guess: ω={args.initial_omega:.4f}, β={args.initial_beta:.4f}",
+        f"- Fixed parameters: α={args.alpha:.4f}, ε={args.epsilon:.4f}",
+        f"- Mean acceptance fraction: {acceptance_fraction:.3f}\n",
+        "## Parameter Estimates",
+        "\nBest-fit parameters with 1-sigma (68%) credible intervals:",
+        f"\n| Parameter | Median | Lower Error | Upper Error |",
+        "|-----------|--------|-------------|-------------|",
+        f"| Omega (ω) | {results_summary['omega']['median']:.4f} | {results_summary['omega']['lower_err']:.4f} | {results_summary['omega']['upper_err']:.4f} |",
+        f"| Beta (β) | {results_summary['beta']['median']:.4f} | {results_summary['beta']['lower_err']:.4f} | {results_summary['beta']['upper_err']:.4f} |\n",
+        "## Corner Plot",
+        "\n![Parameter Corner Plot](corner_plot_" + f"{timestamp}{suffix}.png" + ")",
+        "\nThe corner plot shows the 1D and 2D posterior distributions of the model parameters.",
+        "Contours show the 1-sigma, 2-sigma, and 3-sigma credible regions.",
+        "\n## Interpretation",
+        "\nThe MCMC analysis shows that the optimal Genesis-Sphere parameters are:",
+        f"- **Omega (ω)**: {results_summary['omega']['median']:.4f} ± {(results_summary['omega']['lower_err'] + results_summary['omega']['upper_err'])/2:.4f}",
+        f"- **Beta (β)**: {results_summary['beta']['median']:.4f} ± {(results_summary['beta']['lower_err'] + results_summary['beta']['upper_err'])/2:.4f}",
+        "\nThese values represent the statistical constraints from combining H₀ correlation,",
+        "supernovae distance modulus fitting, and BAO signal detection. The uncertainties",
+        "reflect the genuine statistical uncertainty in determining these parameters from the available data.",
+        "\nCompared to the previous grid search approach, this MCMC analysis provides more robust",
+        "parameter constraints by thoroughly exploring the parameter space and quantifying uncertainties.",
+        "\n---",
+        "\n*This report was automatically generated by the Genesis-Sphere MCMC parameter estimation framework.*"
     ]
     
-    if theoretical_optimal_metrics is not None:
-        summary.extend([
-            "## Performance at Parameters Closest to Sweep Center",
-            f"\nPerformance at parameters closest to the sweep center (ω={sweep_center_params['omega']:.2f}, β={sweep_center_params['beta']:.2f}):",
-            f"\n| Parameter | Value | Description |",
-            "|-----------|-------|-------------|",
-            f"| Omega (ω) | {theoretical_optimal_metrics['omega']:.4f} | Angular frequency |",
-            f"| Beta (β) | {theoretical_optimal_metrics['beta']:.4f} | Temporal damping factor |",
-            f"| Alpha (α) | {theoretical_optimal_metrics['alpha']:.4f} | Spatial dimension expansion coefficient |",
-            f"| Epsilon (ε) | {theoretical_optimal_metrics['epsilon']:.4f} | Zero-prevention constant |\n",
-            "### Performance Metrics",
-            f"\n- H₀ Correlation: {theoretical_optimal_metrics['h0_correlation']*100:.2f}%",
-            f"- Supernovae R²: {theoretical_optimal_metrics['sne_r_squared']*100:.2f}%",
-            f"- BAO Effect Size: {theoretical_optimal_metrics['bao_high_z_effect_size']:.2f}",
-            f"- Combined Score: {theoretical_optimal_metrics['combined_score']:.4f}\n",
-            "## Comparison: Best Found vs. Sweep Center",
-            "\nThis comparison highlights the difference between the best parameters found in the sweep and the parameters closest to the sweep's starting center point.",
-            f"\n- **Parameter Distance**: Euclidean distance between (ω, β) points = {theoretical_optimal_metrics['dist_to_theory']:.4f}",
-            f"- **Combined Score Difference**: {best_params['combined_score'] - theoretical_optimal_metrics['combined_score']:.4f} (Higher is better for 'Best Found')",
-            f"- **H₀ Correlation Difference**: {(best_params['h0_correlation'] - theoretical_optimal_metrics['h0_correlation'])*100:.2f}%",
-            f"- **Supernovae R² Difference**: {(best_params['sne_r_squared'] - theoretical_optimal_metrics['sne_r_squared'])*100:.2f}%",
-            f"- **BAO Effect Size Difference**: {best_params['bao_high_z_effect_size'] - theoretical_optimal_metrics['bao_high_z_effect_size']:.2f}\n"
-        ])
-        
-        omega_diff = abs(best_params['omega'] - theoretical_optimal_metrics['omega'])
-        beta_diff = abs(best_params['beta'] - theoretical_optimal_metrics['beta'])
-        score_diff = best_params['combined_score'] - theoretical_optimal_metrics['combined_score']
-        
-        # Determine if the best parameters are significantly different from the center
-        is_close_params = omega_diff < (results_df['omega'].max() - results_df['omega'].min()) / 4 and \
-                          beta_diff < (results_df['beta'].max() - results_df['beta'].min()) / 4
-        is_close_score = abs(score_diff) < 0.1 * abs(theoretical_optimal_metrics['combined_score']) if theoretical_optimal_metrics['combined_score'] != 0 else abs(score_diff) < 0.05
-
-        summary.append("### Interpretation of Comparison")
-        if is_close_params and is_close_score:
-            conclusion = f"The best parameters found (ω={best_params['omega']:.2f}, β={best_params['beta']:.2f}) are very close to the sweep center (ω={sweep_center_params['omega']:.2f}, β={sweep_center_params['beta']:.2f}) both in parameter space and performance score. This suggests the sweep center is near a local optimum within the tested range."
-        elif is_close_params and not is_close_score:
-            conclusion = f"The best parameters found (ω={best_params['omega']:.2f}, β={best_params['beta']:.2f}) are near the sweep center (ω={sweep_center_params['omega']:.2f}, β={sweep_center_params['beta']:.2f}), but offer a significantly different performance score ({score_diff:+.4f}). This indicates a steep gradient in performance near the center."
-        elif not is_close_params and is_close_score:
-            conclusion = f"The best parameters found (ω={best_params['omega']:.2f}, β={best_params['beta']:.2f}) are relatively far from the sweep center (ω={sweep_center_params['omega']:.2f}, β={sweep_center_params['beta']:.2f}), yet yield a similar performance score ({score_diff:+.4f}). This might indicate a plateau or multiple optima within the sweep range."
-        else: # Not close params, not close score
-             conclusion = f"The best parameters found (ω={best_params['omega']:.2f}, β={best_params['beta']:.2f}) are significantly different from the sweep center (ω={sweep_center_params['omega']:.2f}, β={sweep_center_params['beta']:.2f}) and provide a notably different performance score ({score_diff:+.4f}). This suggests the optimal parameters may lie towards the edge or outside of the current sweep range, warranting further investigation in that direction."
-
-        summary.extend(["\n" + conclusion + "\n"])
-            
-    else:
-        summary.extend([
-            "## Conclusion",
-            f"\nThe sweep center parameters (ω={sweep_center_params['omega']:.2f}, β={sweep_center_params['beta']:.2f}) were not closely sampled in this sweep, so a direct comparison is not available.",
-            "The best parameters found represent the optimum within the tested range.\n"
-        ])
-
-    summary.extend([
-        "## Visualizations",
-        "\n### Combined Score Heatmap",
-        "![Combined Score Heatmap](combined_score_heatmap.png)",
-        "\nThis heatmap shows the combined performance score across all metrics for different parameter combinations. Brighter colors indicate better performance.\n",
-        "### Individual Metric Heatmaps",
-        "![H₀ Correlation Heatmap](h0_correlation_heatmap.png)",
-        "\nThis heatmap shows how well the model correlates with historical H₀ measurements across parameter combinations.\n",
-        "![Supernovae R² Heatmap](sne_r_squared_heatmap.png)",
-        "\nThis heatmap shows the R² values for fitting Type Ia supernovae distance modulus data across parameter combinations.\n",
-        "![BAO Effect Size Heatmap](bao_high_z_effect_size_heatmap.png)",
-        "\nThis heatmap shows the effect size for BAO signal detection at z~2.3 across parameter combinations.\n",
-        "---",
-        "\n*This report was automatically generated by the Genesis-Sphere parameter sweep validation framework.*"
-    ])
-    
-    summary_path = os.path.join(results_dir, "parameter_sweep_summary.md")
+    summary_path = os.path.join(results_dir, f"mcmc_summary_{timestamp}{suffix}.md")
     with open(summary_path, 'w', encoding='utf-8') as f:
         f.write('\n'.join(summary))
     
     print(f"Validation summary saved to: {summary_path}")
-
-def run_parameter_sweep(center_omega=2.3, center_beta=0.9, 
-                        sweep_range_omega=0.3, sweep_range_beta=0.3, 
-                        n_omega_steps=9, n_beta_steps=8, 
-                        alpha=0.02, epsilon=0.1):
-    """
-    Performs a parameter sweep around a central point for omega and beta.
-    
-    Parameters:
-    -----------
-    center_omega : float
-        Central value for the omega parameter sweep.
-    center_beta : float
-        Central value for the beta parameter sweep.
-    sweep_range_omega : float
-        Half-width of the sweep range for omega (e.g., 0.3 means center_omega +/- 0.3).
-    sweep_range_beta : float
-        Half-width of the sweep range for beta.
-    n_omega_steps : int
-        Number of steps to take for omega within the range.
-    n_beta_steps : int
-        Number of steps to take for beta within the range.
-    alpha : float
-        Fixed value for the alpha parameter.
-    epsilon : float
-        Fixed value for the epsilon parameter.
-        
-    Returns:
-    --------
-    pd.DataFrame
-        DataFrame containing the results of the parameter sweep.
-    """
-    omega_values = np.linspace(center_omega - sweep_range_omega, center_omega + sweep_range_omega, n_omega_steps)
-    beta_values = np.linspace(center_beta - sweep_range_beta, center_beta + sweep_range_beta, n_beta_steps)
-    
-    results = []
-    
-    total_combinations = len(omega_values) * len(beta_values)
-    current = 0
-    
-    for omega in omega_values:
-        for beta in beta_values:
-            current += 1
-            print(f"Running combination {current}/{total_combinations}: ω={omega:.4f}, β={beta:.4f}")
-            metrics = run_validation_with_parameters(omega, beta, alpha, epsilon)
-            results.append(metrics)
-    
-    df = pd.DataFrame(results)
-    
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    results_file = os.path.join(results_dir, f"parameter_sweep_{timestamp}.csv")
-    df.to_csv(results_file, index=False)
-    print(f"Results saved to {results_file}")
-    
-    return df
-
-def main():
-    """Main function to run the parameter sweep validation"""
-    parser = argparse.ArgumentParser(description="Run parameter sweep validation for Genesis-Sphere")
-    parser.add_argument("--mode", type=str, default="default", choices=["default", "focused", "broad"], 
-                        help="Sweep mode preset ('default', 'focused', 'broad')")
-    parser.add_argument("--center_omega", type=float, help="Center value for omega sweep (overrides mode)")
-    parser.add_argument("--center_beta", type=float, help="Center value for beta sweep (overrides mode)")
-    parser.add_argument("--range_omega", type=float, help="Half-width of omega sweep range (overrides mode)")
-    parser.add_argument("--range_beta", type=float, help="Half-width of beta sweep range (overrides mode)")
-    parser.add_argument("--steps_omega", type=int, help="Number of steps for omega (overrides mode)")
-    parser.add_argument("--steps_beta", type=int, help="Number of steps for beta (overrides mode)")
-    parser.add_argument("--alpha", type=float, default=0.02, help="Fixed alpha value")
-    parser.add_argument("--epsilon", type=float, default=0.1, help="Fixed epsilon value")
-    
-    args = parser.parse_args()
-
-    # --- Mode Presets ---
-    modes = {
-        "default": { # Updated center to current theoretical optimal point
-            "center_omega": 2.9, "center_beta": 0.3,  # New theoretical optimal point from previous sweep
-            "range_omega": 0.3, "range_beta": 0.3,    # Keep similar range
-            "steps_omega": 10, "steps_beta": 10       # 10 * 10 = 100 combinations
-        },
-        "focused": { # Tighter range around the new optimal point
-            "center_omega": 2.9, "center_beta": 0.3,
-            "range_omega": 0.1, "range_beta": 0.1,
-            "steps_omega": 11, "steps_beta": 11      # ~121 combinations
-        },
-        "broad": { # Wider range around the new optimal point
-            "center_omega": 2.9, "center_beta": 0.3,
-            "range_omega": 1.0, "range_beta": 1.0,
-            "steps_omega": 7, "steps_beta": 7        # ~49 combinations
-        }
-    }
-    
-    selected_mode = modes.get(args.mode, modes["default"])
-
-    # Apply mode presets unless overridden by command-line arguments
-    center_omega = args.center_omega if args.center_omega is not None else selected_mode["center_omega"]
-    center_beta = args.center_beta if args.center_beta is not None else selected_mode["center_beta"]
-    range_omega = args.range_omega if args.range_omega is not None else selected_mode["range_omega"]
-    range_beta = args.range_beta if args.range_beta is not None else selected_mode["range_beta"]
-    steps_omega = args.steps_omega if args.steps_omega is not None else selected_mode["steps_omega"]
-    steps_beta = args.steps_beta if args.steps_beta is not None else selected_mode["steps_beta"]
-    
-    print(f"Starting Genesis-Sphere Parameter Sweep Validation (Mode: {args.mode})...")
-    print(f"Sweep Center: ω={center_omega}, β={center_beta}")
-    print(f"Sweep Range: ω=[{center_omega - range_omega:.2f}, {center_omega + range_omega:.2f}], "
-          f"β=[{center_beta - range_beta:.2f}, {center_beta + range_beta:.2f}]")
-    print(f"Sweep Steps: ω={steps_omega}, β={steps_beta} (Total: {steps_omega * steps_beta})")
-    print(f"Fixed Parameters: α={args.alpha}, ε={args.epsilon}")
-    
-    # Run the sweep using the determined parameters
-    results_df = run_parameter_sweep(
-        center_omega=center_omega,
-        center_beta=center_beta,
-        sweep_range_omega=range_omega,
-        sweep_range_beta=range_beta,
-        n_omega_steps=steps_omega,
-        n_beta_steps=steps_beta,
-        alpha=args.alpha,
-        epsilon=args.epsilon
-    )
-    
-    # Use the actual sweep center points for analysis and summary generation
-    sweep_center_params = {'omega': center_omega, 'beta': center_beta, 'alpha': args.alpha, 'epsilon': args.epsilon}
-    best_params_info = analyze_parameter_sweep(results_df, sweep_center_params) # Pass sweep center instead of theoretical
-    
-    summary = generate_validation_summary(results_df, 
-                                          best_params_info['best_params'], 
-                                          best_params_info['theoretical_optimal_metrics'],
-                                          sweep_center_params) 
-    
-    print("\nParameter sweep validation complete!")
-    print(f"Results and visualizations saved to {results_dir}")
-    
-    return summary
 
 if __name__ == "__main__":
     main()

@@ -486,24 +486,24 @@ python validation/cyclic_behavior_validation.py --omega 2.0 --beta 1.2
 > 
 > 2. **Raw Astronomical Data Fitting**: A separate optimization approach (resulting in α=0.1000, β=0.2712, ω=4.1702, ε=0.0100) attempted to directly fit raw astronomical datasets without prioritizing theoretical cyclic properties. This showed strong BAO detection but performed poorly on other metrics.
 > 
-> 3. **Parameter Sweep Validation**: Our most recent comprehensive sweep (centered around ω=2.6, β=0.6 with 100 combinations) identified a new theoretical optimal point (ω=2.9, β=0.3) that offers improved performance on combined astronomical metrics.
+> 3. **Parameter Sweep Validation**: Our recent comprehensive sweep with expanded ranges identified a new optimal point (ω=3.5, β=-0.0333) that offers significantly improved performance on combined astronomical metrics.
 > 
 > **Current Theoretical Optimal Point:**
 > 
 > | Parameter | Value | Description |
 > |-----------|-------|-------------|
-> | Omega (ω) | 2.9000 | Angular frequency |
-> | Beta (β)  | 0.3000 | Temporal damping factor |
+> | Omega (ω) | 3.5000 | Angular frequency |
+> | Beta (β)  | -0.0333 | Temporal damping factor |
 > 
 > **Performance Metrics:**
-> - H₀ Correlation: -34.16%
-> - Supernovae R²: -183.60%
-> - BAO Effect Size: 38.29
-> - Combined Score: -0.6711
+> - H₀ Correlation: -15.39%
+> - Supernovae R²: -9.61%
+> - BAO Effect Size: 13.42
+> - Combined Score: 0.1000
 > 
-> This parameter combination represents the best empirical fit found through our systematic parameter space exploration. The negative correlation with H₀ measurements and negative R² for supernovae indicate areas for continued theoretical development, while the strong BAO effect size suggests the model effectively captures some important features of cosmic structure formation. Future validation work will focus on reconciling these diverse observational constraints.
+> This parameter combination represents the best empirical fit found through our systematic parameter space exploration. The improved H₀ correlation and substantially better supernovae R² values compared to previous parameter sets indicate meaningful progress in matching observational data. While the BAO effect size is lower than with previous parameters, the overall combined score shows positive performance, suggesting a better balance across all metrics.
 > 
-> **Recommended Parameters**: For theoretical work requiring cyclic behavior, we still recommend the cyclic-optimized parameters (ω=2.0, β=1.2). For applications prioritizing BAO signal strength, the new theoretical optimal point (ω=2.9, β=0.3) may be preferred.
+> **Recommended Parameters**: For theoretical work requiring cyclic behavior, we still recommend the cyclic-optimized parameters (ω=2.0, β=1.2). For applications prioritizing overall astronomical data fitting, the new optimal point (ω=3.5, β=-0.0333) is preferred.
 
 ### 📊 Celestial Correlation Validation Results
 

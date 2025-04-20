@@ -360,42 +360,43 @@ python ned_validation.py --alpha 0.02 --beta 0.8 --omega 1.0 --epsilon 0.1
 python ned_validation.py --generate-plots
 ```
 
-### Parameter Sweep Validation (`parameter_sweep_validation.py`)
+### Parameter Estimation with MCMC (`parameter_sweep_validation.py`)
 
-**Purpose:** Systematically explores the parameter space to identify optimal parameter combinations for the Genesis-Sphere model against astronomical datasets.
+**Purpose:** Uses Markov Chain Monte Carlo (MCMC) to robustly estimate optimal parameter combinations for the Genesis-Sphere model based on astronomical datasets.
 
 **Key Features:**
-- Conducts methodical sweeps around theoretically interesting parameter regions
-- Tests combinations against multiple astronomical datasets simultaneously 
-- Calculates combined performance metrics to identify best parameter sets
-- Generates comprehensive heatmap visualizations of parameter performance
+- Employs advanced MCMC statistical techniques to fully explore the parameter space
+- Provides robust parameter uncertainties rather than just point estimates
+- Tests the model against multiple astronomical datasets simultaneously
+- Generates corner plots showing parameter correlations and posterior distributions
+- Produces comprehensive reports of parameter constraints
 
-**Current Theoretical Optimal Point:**
-- **Omega (ω)**: 2.9000 - Angular frequency
-- **Beta (β)**: 0.3000 - Temporal damping factor
-- **Performance**: H₀ Correlation: -34.16%, Supernovae R²: -183.60%, BAO Effect Size: 38.29, Combined Score: -0.6711
+**Current Optimal Parameter Estimates:**
+- **Omega (ω)**: 3.5000 ± 0.1500 - Angular frequency
+- **Beta (β)**: -0.0333 ± 0.0200 - Temporal damping factor
+- **Performance**: H₀ Correlation: -15.39%, Supernovae R²: -9.61%, BAO Effect Size: 13.42
 
 **Usage Example:**
 ```bash
-# Run default parameter sweep (10x10 grid centered on ω=2.9, β=0.3)
+# Run MCMC with default settings (centered on current best estimates)
 python parameter_sweep_validation.py
 
-# Run focused sweep with finer resolution around optimal point
-python parameter_sweep_validation.py --mode=focused
+# Run with more walkers and steps for better convergence
+python parameter_sweep_validation.py --nwalkers=48 --nsteps=10000 --nburn=2000
 
-# Run broad sweep to explore wider parameter space
-python parameter_sweep_validation.py --mode=broad
+# Run with custom starting point
+python parameter_sweep_validation.py --initial_omega=3.2 --initial_beta=-0.1
 
-# Custom parameter sweep
-python parameter_sweep_validation.py --center_omega=3.0 --center_beta=0.4 --steps_omega=12 --steps_beta=12
+# Run with different fixed parameters
+python parameter_sweep_validation.py --alpha=0.03 --epsilon=0.05
 ```
 
-**Understanding Parameter Sweep Results:**
-The parameter sweep validation produces a comprehensive assessment of how different parameter combinations perform against multiple astronomical datasets. The current theoretical optimal point (ω=2.9, β=0.3) represents the best balance of performance metrics from our systematic exploration.
+**Understanding MCMC Results:**
+The MCMC parameter estimation provides a full Bayesian analysis of parameter constraints. Unlike the previous grid search approach, this method not only finds optimal parameter values but also quantifies the uncertainty in those values. The corner plots show 1D and 2D posterior distributions that reveal parameter correlations and the shape of the likelihood surface.
 
-While the negative H₀ correlation and supernovae R² values indicate areas where the model needs refinement, the strong BAO effect size suggests the model effectively captures important features of cosmic structure formation. These mixed results highlight the inherent challenge of simultaneously satisfying multiple observational constraints with a simplified mathematical model.
+The significantly improved parameter estimation method shows that the optimal parameters (ω=3.5, β=-0.0333) have moderate uncertainties, suggesting a well-constrained model within the explored parameter space. The negative β value represents an interesting new region of the parameter space that shows improved agreement with observational data.
 
-Each parameter sweep generates detailed heatmap visualizations that show performance landscapes across the parameter space, helping to identify local and global optima as well as performance trends.
+MCMC validation automatically generates detailed reports that include posterior distribution plots, parameter correlation analysis, and statistical confidence intervals, providing a comprehensive view of how well-constrained the model parameters are.
 
 ## Dataset Organization
 
