@@ -476,7 +476,7 @@ def log_posterior_gpu(params, data_h0, data_sne, data_bao, fixed_alpha, fixed_ep
     return lp + ll
 
 # Function to save intermediate results during MCMC run
-def save_intermediate_results(sampler, nburn, output_dir, prefix, fixed_params):
+def save_intermediate_results(sampler, nburn, output_dir, prefix, fixed_params, step_number, batch_speed, total_elapsed):
     """Save intermediate MCMC results for checkpointing"""
     try:
         # Get current timestamp
@@ -488,7 +488,7 @@ def save_intermediate_results(sampler, nburn, output_dir, prefix, fixed_params):
         if len(samples) == 0:
             print("No valid samples to save yet.")
             return
-        
+            
         # Create DataFrame and save
         df_samples = pd.DataFrame(samples, columns=['omega', 'beta'])
         checkpoint_file = os.path.join(output_dir, f"{prefix}_checkpoint_{timestamp}.csv")
@@ -506,19 +506,33 @@ def save_intermediate_results(sampler, nburn, output_dir, prefix, fixed_params):
                     # Just use mean if not enough for percentiles
                     results_summary[label] = {'median': float(np.mean(samples[:, i]))}
             
-            # Save basic info
+            # Save basic info with additional runtime metrics
             info = {
                 'timestamp': timestamp,
                 'samples_saved': len(samples),
                 'current_results': results_summary,
-                'fixed_params': fixed_params
+                'fixed_params': fixed_params,
+                'progress': {
+                    'step_number': step_number,
+                    'batch_speed': batch_speed,
+                    'elapsed_minutes': total_elapsed / 60.0,
+                    'epoch': int(step_number / len(sampler.chain))
+                }
             }
             
             info_file = os.path.join(output_dir, f"{prefix}_checkpoint_info_{timestamp}.json")
             with open(info_file, 'w') as f:
                 json.dump(info, f, indent=4)
+            
+            # Save sampler state for potential recovery
+            state_file = os.path.join(output_dir, f"{prefix}_state_{timestamp}.npz")
+            np.savez(state_file, 
+                     chain=sampler.chain,
+                     random_state=np.random.get_state())
                 
             print(f"Checkpoint saved with {len(samples)} samples. Current estimates:")
+            print(f"  Epoch: {int(step_number / len(sampler.chain))}, Steps: {step_number}")
+            print(f"  Batch speed: {batch_speed:.1f} samples/s, Elapsed: {total_elapsed/60:.1f} min")
             for param, values in results_summary.items():
                 print(f"  {param}: {values['median']:.4f}")
     
@@ -540,14 +554,24 @@ def main():
     parser.add_argument("--initial_omega", type=float, default=3.5, help="Initial guess for omega")
     parser.add_argument("--initial_beta", type=float, default=-0.0333, help="Initial guess for beta")
     parser.add_argument("--output_suffix", type=str, default="", help="Optional suffix for output filenames")
-    parser.add_argument("--checkpoint_interval", type=int, default=500, 
+    parser.add_argument("--checkpoint_interval", type=int, default=100, 
                         help="Save intermediate results every N steps (0 to disable)")
     parser.add_argument("--test_mode", action="store_true", 
                         help="Run in test mode with reduced computation")
-    parser.add_argument("--max_time", type=int, default=0,
-                        help="Maximum runtime in minutes (0 for unlimited)")
+    parser.add_argument("--max_time", type=int, default=30,
+                        help="Maximum runtime in minutes (default: 30 minutes)")
+    parser.add_argument("--resume", type=str, default="", 
+                        help="Path to state file to resume from a previous run")
+
     args = parser.parse_args()
 
+    # Create save points directory
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    suffix = f"_{args.output_suffix}" if args.output_suffix else ""
+    run_id = f"{timestamp}{suffix}"
+    save_points_dir = os.path.join(results_dir, f"savepoints_{run_id}")
+    os.makedirs(save_points_dir, exist_ok=True)
+    
     # Modify parameters if in test mode
     if args.test_mode:
         print("Running in TEST MODE with reduced computation")
@@ -568,16 +592,11 @@ def main():
     print(f"Fixed Parameters: α={args.alpha}, ε={args.epsilon}")
     print(f"MCMC Settings: Walkers={args.nwalkers}, Steps={args.nsteps}, Burn-in={args.nburn}")
     print(f"Checkpoint Interval: {args.checkpoint_interval} steps")
-    if args.max_time > 0:
-        print(f"Maximum runtime: {args.max_time} minutes")
-
+    print(f"Maximum runtime: {args.max_time} minutes")
+    print(f"Save points directory: {save_points_dir}")
+    
     # Initial memory usage
     print_memory_usage("at start")
-
-    # Create timestamp for this run
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    suffix = f"_{args.output_suffix}" if args.output_suffix else ""
-    run_id = f"{timestamp}{suffix}"
 
     # --- Load Data ---
     print("Loading observational data...")
@@ -621,34 +640,62 @@ def main():
         print(f"Error loading data: {e}")
         sys.exit(1)
 
-    # --- Initialize Walkers ---
-    print("Initializing walkers...")
-    init_start = time.time()
-    # Start walkers in a small Gaussian ball around the previous best parameters
-    initial_pos_guess = np.array([args.initial_omega, args.initial_beta])
+    # --- Initialize or Resume Walkers ---
+    if args.resume:
+        print(f"Resuming from state file: {args.resume}")
+        try:
+            # Load previous state
+            state_data = np.load(args.resume)
+            chain = state_data['chain']
+            random_state = state_data['random_state']
+            
+            # Set the random state
+            np.random.set_state(random_state)
+            
+            # Use the last position of the chain
+            pos = chain[:, -1, :]
+            
+            # Calculate steps already completed
+            steps_already_completed = chain.shape[1]
+            print(f"Resuming from step {steps_already_completed} with {args.nsteps - steps_already_completed} remaining")
+            
+            # Adjust nsteps to account for steps already done
+            args.nsteps = max(args.nsteps - steps_already_completed, 100)  # Ensure at least 100 more steps
+            
+        except Exception as e:
+            print(f"Error loading previous state: {e}")
+            print("Starting with fresh initialization instead.")
+            args.resume = ""
     
-    # Add small random offsets for each walker, ensuring they are within priors
-    pos = np.zeros((args.nwalkers, N_DIM))
-    max_attempts = 1000  # Prevent infinite loops
-    
-    for i in range(args.nwalkers):
-        attempts = 0
-        # Keep generating random starting points until they satisfy the prior
-        while attempts < max_attempts:
-            p = initial_pos_guess + 1e-3 * np.abs(initial_pos_guess) * np.random.randn(N_DIM)
-            if np.isfinite(log_prior(p)):
-                pos[i] = p
-                break
-            attempts += 1
-    
-        if attempts >= max_attempts:
-            print(f"Warning: Could not initialize walker {i} after {max_attempts} attempts.")
-            print(f"Using initial guess directly: ω={args.initial_omega}, β={args.initial_beta}")
-            pos[i] = initial_pos_guess
-    
-    nwalkers, ndim = pos.shape
-    print(f"Initialized {nwalkers} walkers around ω={args.initial_omega}, β={args.initial_beta} " 
-          f"in {time.time() - init_start:.2f}s")
+    if not args.resume:
+        print("Initializing walkers...")
+        init_start = time.time()
+        # Start walkers in a small Gaussian ball around the previous best parameters
+        initial_pos_guess = np.array([args.initial_omega, args.initial_beta])
+        
+        # Add small random offsets for each walker, ensuring they are within priors
+        pos = np.zeros((args.nwalkers, N_DIM))
+        max_attempts = 1000  # Prevent infinite loops
+        
+        for i in range(args.nwalkers):
+            attempts = 0
+            # Keep generating random starting points until they satisfy the prior
+            while attempts < max_attempts:
+                p = initial_pos_guess + 1e-3 * np.abs(initial_pos_guess) * np.random.randn(N_DIM)
+                if np.isfinite(log_prior(p)):
+                    pos[i] = p
+                    break
+                attempts += 1
+        
+            if attempts >= max_attempts:
+                print(f"Warning: Could not initialize walker {i} after {max_attempts} attempts.")
+                print(f"Using initial guess directly: ω={args.initial_omega}, β={args.initial_beta}")
+                pos[i] = initial_pos_guess
+        
+        nwalkers, ndim = pos.shape
+        print(f"Initialized {nwalkers} walkers around ω={args.initial_omega}, β={args.initial_beta} " 
+              f"in {time.time() - init_start:.2f}s")
+        steps_already_completed = 0
 
     # --- Test likelihood function with a few points ---
     print("Testing likelihood function with initial positions...")
@@ -666,8 +713,9 @@ def main():
                 print(f"  Test {i+1}: ω={test_params[0]:.4f}, β={test_params[1]:.4f} → Invalid posterior")
         except Exception as e:
             print(f"  Test {i+1}: ω={test_params[0]:.4f}, β={test_params[1]:.4f} → Error: {e}")
-
+    
     print(f"Likelihood function test: {success_count}/5 successful in {time.time() - test_start:.2f}s")
+    
     if success_count == 0:
         print("ERROR: All likelihood function tests failed. Exiting.")
         sys.exit(1)
@@ -677,7 +725,7 @@ def main():
     mcmc_start = time.time()
     
     # Set up max runtime if specified
-    max_runtime_seconds = args.max_time * 60 if args.max_time > 0 else None
+    max_runtime_seconds = args.max_time * 60
     
     # Fixed parameters to pass to checkpointing
     fixed_params = {
@@ -702,62 +750,84 @@ def main():
             args=(h0_data, sne_data, bao_data, args.alpha, args.epsilon)
         )
 
-    # Run MCMC steps with progress and checkpointing
+    # Run MCMC steps with progress, checkpointing, and time limit
+    print("Running with checkpoints and time limit...")
+    
+    # Run in smaller chunks for checkpointing
+    chunk_size = min(50, args.checkpoint_interval)  # Smaller chunks for more frequent updates
+    n_chunks = args.nsteps // chunk_size
+    remaining_steps = args.nsteps % chunk_size
+    
+    current_pos = pos
+    steps_completed = steps_already_completed
+    total_steps = args.nsteps + steps_already_completed
     checkpoint_counter = 0
-
-    # Use run_mcmc with progress=True for the simple case
-    if args.checkpoint_interval <= 0 and not args.max_time:
-        sampler.run_mcmc(pos, args.nsteps, progress=True)
-    else:
-        # More complex case with checkpointing and/or time limit
-        print("Running with checkpoints and/or time limit...")
-        
-        # Run in smaller chunks for checkpointing
-        chunk_size = min(100, args.checkpoint_interval) if args.checkpoint_interval > 0 else 100
-        n_chunks = args.nsteps // chunk_size
-        remaining_steps = args.nsteps % chunk_size
-        
-        current_pos = pos
-        steps_completed = 0
-        
-        for i in range(n_chunks + (1 if remaining_steps > 0 else 0)):
-            # Check if we've exceeded max runtime
-            if max_runtime_seconds and (time.time() - start_time > max_runtime_seconds):
-                print(f"Maximum runtime of {args.max_time} minutes exceeded. Stopping.")
-                break
-
-            # Determine steps for this chunk
-            if i == n_chunks and remaining_steps > 0:
-                steps = remaining_steps
-            else:
-                steps = chunk_size
-                
-            # Run this chunk
-            chunk_start = time.time()
-            print(f"Running chunk {i+1}/{n_chunks + (1 if remaining_steps > 0 else 0)}: "
-                  f"{steps} steps ({steps_completed}/{args.nsteps} total)")
+    
+    # Track batch speed over time
+    batch_speeds = []
+    last_checkpoint_time = time.time()
+    
+    for i in range(n_chunks + (1 if remaining_steps > 0 else 0)):
+        # Check if we've exceeded max runtime
+        current_elapsed = time.time() - start_time
+        if current_elapsed > max_runtime_seconds:
+            print(f"Maximum runtime of {args.max_time} minutes exceeded. Stopping.")
             
-            current_pos, _, _ = sampler.run_mcmc(current_pos, steps, progress=True)
-            steps_completed += steps
+            # Save final checkpoint before stopping
+            current_batch_speed = np.mean(batch_speeds) if batch_speeds else 0
+            save_intermediate_results(
+                sampler, args.nburn, save_points_dir, f"mcmc_{run_id}", 
+                fixed_params, steps_completed, current_batch_speed, current_elapsed
+            )
+            break
             
-            # Report on this chunk
-            chunk_time = time.time() - chunk_start
-            print(f"  Completed chunk in {chunk_time:.2f}s "
-                  f"({steps/chunk_time:.1f} steps/s, "
-                  f"~{(args.nsteps-steps_completed)/(steps/chunk_time)/60:.1f} minutes remaining)")
+        # Determine steps for this chunk
+        if i == n_chunks and remaining_steps > 0:
+            steps = remaining_steps
+        else:
+            steps = chunk_size
             
-            # Garbage collection to prevent memory leaks
-            gc.collect()
-            print_memory_usage(f"after chunk {i+1}")
-
-            # Save checkpoint if needed
-            checkpoint_counter += steps
-            if args.checkpoint_interval > 0 and checkpoint_counter >= args.checkpoint_interval:
-                print(f"Saving checkpoint after {steps_completed} steps...")
-                save_intermediate_results(
-                    sampler, args.nburn, results_dir, f"mcmc_{run_id}", fixed_params
-                )
-                checkpoint_counter = 0
+        # Run this chunk
+        chunk_start = time.time()
+        print(f"Running chunk {i+1}/{n_chunks + (1 if remaining_steps > 0 else 0)}: "
+              f"{steps} steps ({steps_completed}/{total_steps} total)")
+        print(f"Elapsed time: {current_elapsed/60:.1f} min, Remaining: {(max_runtime_seconds-current_elapsed)/60:.1f} min")
+        
+        current_pos, _, _ = sampler.run_mcmc(current_pos, steps, progress=True)
+        steps_completed += steps
+        
+        # Calculate batch speed
+        chunk_time = time.time() - chunk_start
+        batch_speed = steps * nwalkers / chunk_time  # samples per second
+        batch_speeds.append(batch_speed)
+        current_batch_speed = batch_speed
+        
+        # Calculate estimated epoch (full passes through the dataset)
+        # In MCMC, this is the number of steps completed divided by the total number of walkers
+        current_epoch = steps_completed / nwalkers
+        
+        # Report on this chunk
+        print(f"  Completed chunk in {chunk_time:.2f}s "
+              f"({batch_speed:.1f} samples/s, "
+              f"~{(total_steps-steps_completed)/(steps/chunk_time)/60:.1f} minutes remaining)")
+        print(f"  Epoch: {current_epoch:.2f}, Batch speed: {batch_speed:.1f} samples/s")
+        
+        # Garbage collection to prevent memory leaks
+        gc.collect()
+        print_memory_usage(f"after chunk {i+1}")
+        
+        # Save checkpoint if needed or if enough time has passed
+        checkpoint_counter += steps
+        time_since_last_checkpoint = time.time() - last_checkpoint_time
+        
+        if (args.checkpoint_interval > 0 and checkpoint_counter >= args.checkpoint_interval) or time_since_last_checkpoint > 300:  # 5 minutes
+            print(f"Saving checkpoint after {steps_completed} steps...")
+            save_intermediate_results(
+                sampler, args.nburn, save_points_dir, f"mcmc_{run_id}", 
+                fixed_params, steps_completed, current_batch_speed, current_elapsed
+            )
+            checkpoint_counter = 0
+            last_checkpoint_time = time.time()
 
     mcmc_time = time.time() - mcmc_start
     print("MCMC run complete.")
