@@ -1,0 +1,1 @@
+Step,Epoch,Batch_Speed,Elapsed_Min,Remaining_Min,Memory_MB,Progress_Pct

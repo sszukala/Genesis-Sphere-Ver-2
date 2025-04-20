@@ -1,0 +1,25 @@
+{
+    "timestamp": "20250420_183359",
+    "samples_saved": 0,
+    "steps_completed": 15,
+    "current_results": {
+        "omega": {
+            "median": 3.5
+        },
+        "beta": {
+            "median": -0.0333
+        }
+    },
+    "fixed_params": {
+        "alpha": 0.02,
+        "epsilon": 0.1,
+        "nwalkers": 10,
+        "nsteps": 25,
+        "nburn": 10
+    },
+    "progress": {
+        "step_number": 15,
+        "batch_speed": 96.91480202762311,
+        "elapsed_minutes": 0.046183109283447266
+    }
+}

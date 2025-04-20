@@ -910,6 +910,8 @@ def main():
                         help="Interval in minutes for printing summary updates (default: 15)")
     parser.add_argument("--enhanced_progress", action="store_true",
                         help="Show enhanced progress tracking with percentage completion")
+    parser.add_argument("--slow_mode", action="store_true",
+                      help="Run in slow mode with artificial pauses between steps for easier progress monitoring")
     args = parser.parse_args()    
     
     # Run GPU verification
@@ -1211,6 +1213,14 @@ def main():
         chunk_start = time.time()
         try:
             current_pos, _, _ = sampler.run_mcmc(current_pos, steps, progress=True)
+            
+            # Add delay if slow_mode is enabled
+            if args.slow_mode:
+                delay_sec = 0.5  # Half-second delay between steps
+                print(f"\rAdding {delay_sec:.1f} second delay (slow mode)...", end="", flush=True)
+                time.sleep(delay_sec)
+                print("\r" + " " * 50 + "\r", end="", flush=True)  # Clear the delay message
+                
             steps_completed += steps
             completed_work_units += steps * nwalkers
             
@@ -1473,6 +1483,45 @@ def main():
         main_plot_file = os.path.join(results_dir, f"corner_plot_{run_id}.png")
         fig.savefig(main_plot_file)
         
+        # Generate Markdown summary
+        performance_metrics = None
+        if len(samples) >= 10:
+            # Try to estimate performance metrics for the summary
+            try:
+                gs_model = GenesisSphereModel(
+                    alpha=args.alpha,
+                    beta=results_summary['beta']['median'],
+                    omega=results_summary['omega']['median'],
+                    epsilon=args.epsilon
+                )
+                performance_metrics = {
+                    'h0_correlation_approx': float(estimate_h0_correlation(gs_model)),
+                    'sne_r2_approx': float(estimate_sne_r2(gs_model)),
+                    'bao_effect_approx': float(estimate_bao_effect(gs_model))
+                }
+                # Calculate combined score
+                h0_corr = performance_metrics['h0_correlation_approx']
+                sne_r2 = performance_metrics['sne_r2_approx']
+                bao_effect = performance_metrics['bao_effect_approx']
+                combined_score = (h0_corr + sne_r2 + min(1.0, bao_effect/100))/3
+                performance_metrics['combined_score_approx'] = float(combined_score)
+            except Exception as e:
+                print(f"Could not calculate performance metrics for summary: {e}")
+        
+        md_file = generate_markdown_summary(
+            results_summary,
+            run_info,
+            batch_speeds,
+            acceptance_fraction,
+            end_time - start_time,
+            samples,
+            run_dir,
+            plot_file,
+            checkpoint_file=None,
+            performance_metrics=performance_metrics
+        )
+        print(f"Markdown summary saved to {md_file}")
+        
         # Create a symlink to latest run for easy access
         latest_link = os.path.join(savepoints_dir, "latest_run")
         try:
@@ -1653,6 +1702,97 @@ def estimate_bao_effect(gs_model):
         return max(0, effect_size)  # Ensure positive
     except:
         return 10.0  # Return a default value if calculation fails
+
+# Add this function after print_parameter_summary function
+def generate_markdown_summary(results_summary, run_info, batch_speeds, acceptance_fraction, elapsed_time, samples, output_dir, corner_plot_filename, checkpoint_file=None, performance_metrics=None):
+    """Generate a detailed Markdown summary of MCMC run results"""
+    
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Create markdown content
+    md_content = []
+    md_content.append("# Genesis-Sphere Parameter Sweep Results Summary")
+    md_content.append(f"\n**Generated**: {timestamp}\n")
+    
+    # Add run information
+    md_content.append("## Run Information")
+    md_content.append(f"- **Run duration**: {elapsed_time/60:.2f} minutes")
+    md_content.append(f"- **MCMC steps**: {run_info['nsteps']}")
+    md_content.append(f"- **Burn-in steps**: {run_info['nburn']}")
+    md_content.append(f"- **Number of walkers**: {run_info['nwalkers']}")
+    md_content.append(f"- **Mean acceptance rate**: {acceptance_fraction:.4f}")
+    md_content.append(f"- **Average processing speed**: {np.mean(batch_speeds):.2f} samples/second")
+    md_content.append(f"- **Test mode**: {'Yes' if run_info.get('test_mode', False) else 'No'}")
+    
+    # Parameter results
+    md_content.append("\n## Parameter Estimates")
+    md_content.append("| Parameter | Value | Lower Error | Upper Error |")
+    md_content.append("|-----------|-------|------------|-------------|")
+    
+    for param, values in results_summary.items():
+        md_content.append(f"| {param.capitalize()} (ω) | {values['median']:.4f} | {values['lower_err']:.4f} | {values['upper_err']:.4f} |")
+    
+    # Performance metrics (if available)
+    if performance_metrics:
+        md_content.append("\n## Performance Metrics")
+        md_content.append("| Metric | Value |")
+        md_content.append("|--------|-------|")
+        
+        for metric, value in performance_metrics.items():
+            if 'approx' in metric:
+                metric_name = metric.replace('_approx', '')
+                formatted_value = f"{value:.4f}"
+                md_content.append(f"| {metric_name.replace('_', ' ').title()} | {formatted_value} |")
+    
+    # Sample statistics
+    md_content.append("\n## Sample Statistics")
+    md_content.append(f"- **Total samples**: {len(samples)}")
+    
+    if len(samples) > 0:
+        md_content.append(f"- **Omega (ω) range**: {np.min(samples[:, 0]):.4f} to {np.max(samples[:, 0]):.4f}")
+        md_content.append(f"- **Beta (β) range**: {np.min(samples[:, 1]):.4f} to {np.max(samples[:, 1]):.4f}")
+    
+    # Add checkpoint information if available
+    if checkpoint_file:
+        checkpoint_basename = os.path.basename(checkpoint_file)
+        md_content.append(f"\n**Latest checkpoint**: {checkpoint_basename}")
+    
+    # Include a reference to the corner plot
+    md_content.append("\n## Visualization")
+    
+    corner_plot_basename = os.path.basename(corner_plot_filename)
+    md_content.append(f"![Corner Plot]({corner_plot_basename})")
+    md_content.append("\nThe corner plot shows the posterior distribution of the parameters and their correlations.")
+    
+    # Add recommendations section
+    md_content.append("\n## Recommendations")
+    
+    # Add suggestions based on acceptance rate
+    if acceptance_fraction < 0.1:
+        md_content.append("- **Low acceptance rate**: Consider adjusting prior ranges or using different initial positions")
+    elif acceptance_fraction > 0.8:
+        md_content.append("- **High acceptance rate**: Consider narrowing prior ranges for more efficient exploration")
+    else:
+        md_content.append("- **Good acceptance rate**: Current setup is effectively exploring the parameter space")
+    
+    # Add suggestions based on sample count
+    if len(samples) < 100:
+        md_content.append("- **Few samples**: Increase the number of steps or reduce burn-in for more reliable results")
+    
+    # Add a note about test mode if applicable
+    if run_info.get('test_mode', False):
+        md_content.append("- **Test mode active**: This was a test run with reduced computation. For production results, run without the --test_mode flag")
+    
+    # Add footer
+    md_content.append("\n---")
+    md_content.append("\n*This report was automatically generated by the Genesis-Sphere parameter sweep validation framework.*")
+    
+    # Write to file
+    md_filename = os.path.join(output_dir, "mcmc_summary.md")
+    with open(md_filename, 'w') as f:
+        f.write('\n'.join(md_content))
+    
+    return md_filename
 
 if __name__ == "__main__":
     try:
