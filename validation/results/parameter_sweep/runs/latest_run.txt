@@ -1,0 +1,3 @@
+Latest run: run_20250420_165059 
+Full path: C:\Users\sszuk\OneDrive\Desktop\Genesis ETL Project\Sphere\Genesis-Sphere-Ver-2\validation\results\parameter_sweep\runs\run_20250420_165059 
+Created: Sun 04/20/2025 17:07:25.14 

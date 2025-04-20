@@ -184,3 +184,7 @@ The parameter combinations identified in these sweeps can be used to:
 4. Make testable predictions for future astronomical observations
 
 For any questions, please refer to the main documentation or contact the project maintainers.
+
+## Folder Structure
+
+The parameter sweep validation organizes its outputs in the following structure:

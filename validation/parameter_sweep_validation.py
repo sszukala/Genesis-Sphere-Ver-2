@@ -880,8 +880,21 @@ def main():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     suffix = f"_{args.output_suffix}" if args.output_suffix else ""
     run_id = f"{timestamp}{suffix}"
-    save_points_dir = os.path.join(results_dir, f"savepoints_{run_id}")
-    os.makedirs(save_points_dir, exist_ok=True)
+    
+    # Create main savepoints directory if it doesn't exist
+    savepoints_dir = os.path.join(results_dir, "savepoints")
+    os.makedirs(savepoints_dir, exist_ok=True)
+    
+    # Create run-specific directory for this run
+    run_dir = os.path.join(savepoints_dir, f"run_{run_id}")
+    os.makedirs(run_dir, exist_ok=True)
+    
+    # Create progress tracking file in the run directory
+    progress_log_file = os.path.join(run_dir, f"progress_log.txt")
+    with open(progress_log_file, 'w') as f:
+        f.write("Step,Epoch,Batch_Speed,Elapsed_Min,Remaining_Min,Memory_MB\n")
+    
+    print(f"All results will be saved to: {run_dir}")
     
     # Modify parameters if in test mode
     if args.test_mode:
@@ -904,7 +917,7 @@ def main():
     print(f"MCMC Settings: Walkers={args.nwalkers}, Steps={args.nsteps}, Burn-in={args.nburn}")
     print(f"Checkpoint Interval: {args.checkpoint_interval} steps")
     print(f"Maximum runtime: {args.max_time} minutes")
-    print(f"Save points directory: {save_points_dir}")
+    print(f"Save points directory: {savepoints_dir}")
     
     # Initial memory usage
     print_memory_usage("at start")
@@ -1081,7 +1094,7 @@ def main():
     start_chunk_time = time.time()  # Track when we started for accurate remaining time
     
     # Create progress tracking file
-    progress_log_file = os.path.join(results_dir, f"progress_log_{run_id}.txt")
+    progress_log_file = os.path.join(run_dir, f"progress_log.txt")
     with open(progress_log_file, 'w') as f:
         f.write("Step,Epoch,Batch_Speed,Elapsed_Min,Remaining_Min,Memory_MB\n")
     
@@ -1099,7 +1112,7 @@ def main():
             # Save final checkpoint before stopping
             current_batch_speed = np.mean(batch_speeds) if batch_speeds else 0
             saved_file = save_intermediate_results(
-                sampler, args.nburn, save_points_dir, f"mcmc_{run_id}", 
+                sampler, args.nburn, run_dir, f"mcmc", 
                 fixed_params, steps_completed, current_batch_speed, current_elapsed
             )
             if saved_file:
@@ -1155,7 +1168,7 @@ def main():
             if (args.checkpoint_interval > 0 and checkpoint_counter >= args.checkpoint_interval) or time_since_last_checkpoint > 180:  # 3 minutes (was 5)
                 print(f"\nSaving checkpoint after {steps_completed} steps...")
                 saved_file = save_intermediate_results(
-                    sampler, args.nburn, save_points_dir, f"mcmc_{run_id}", 
+                    sampler, args.nburn, run_dir, f"mcmc", 
                     fixed_params, steps_completed, current_batch_speed, current_elapsed
                 )
                 if saved_file:
@@ -1168,7 +1181,7 @@ def main():
         except KeyboardInterrupt:
             print("\nMCMC interrupted by user. Saving current state and exiting.")
             saved_file = save_intermediate_results(
-                sampler, args.nburn, save_points_dir, f"mcmc_{run_id}_interrupted", 
+                sampler, args.nburn, run_dir, f"mcmc_interrupted", 
                 fixed_params, steps_completed, current_batch_speed, current_elapsed
             )
             if saved_file:
@@ -1179,7 +1192,7 @@ def main():
             print("Attempting to save current progress...")
             try:
                 saved_file = save_intermediate_results(
-                    sampler, args.nburn, save_points_dir, f"mcmc_{run_id}_error", 
+                    sampler, args.nburn, run_dir, f"mcmc_error", 
                     fixed_params, steps_completed, current_batch_speed, current_elapsed
                 )
                 if saved_file:
@@ -1225,8 +1238,8 @@ def main():
         # --- Save Results ---
         print("Saving final results...")
 
-        # Save the samples (the chain)
-        chain_file = os.path.join(results_dir, f"mcmc_chain_{run_id}.csv")
+        # Save the samples (the chain) and final results in run directory
+        chain_file = os.path.join(run_dir, f"mcmc_chain.csv")
         df_samples = pd.DataFrame(samples, columns=['omega', 'beta'])
         df_samples.to_csv(chain_file, index=False)
         print(f"MCMC samples saved to {chain_file}")
@@ -1246,7 +1259,7 @@ def main():
             'samples_shape': list(samples.shape) if len(samples) > 0 else [0, N_DIM],
             'test_mode': args.test_mode
         }
-        info_file = os.path.join(results_dir, f"run_info_{run_id}.json")
+        info_file = os.path.join(run_dir, f"run_info.json")
         with open(info_file, 'w') as f:
             json.dump(run_info, f, indent=4)
         print(f"Run info saved to {info_file}")
@@ -1299,17 +1312,42 @@ def main():
                 }
 
         # Save summary
-        summary_file = os.path.join(results_dir, f"mcmc_summary_{run_id}.json")
+        summary_file = os.path.join(run_dir, f"mcmc_summary.json")
         with open(summary_file, 'w') as f:
             json.dump(results_summary, f, indent=4)
         print(f"Summary saved to {summary_file}")
 
-        # Generate corner plot
+        # Generate corner plot in run directory
         import matplotlib.pyplot as plt
         fig = corner.corner(samples, labels=PARAM_LABELS, truths=[results_summary['omega']['median'], results_summary['beta']['median']])
-        plot_file = os.path.join(results_dir, f"corner_plot_{run_id}.png")
+        plot_file = os.path.join(run_dir, f"corner_plot.png")
         fig.savefig(plot_file)
         print(f"Corner plot saved to {plot_file}")
+        
+        # Save a copy of the corner plot in main results dir for quick access
+        main_plot_file = os.path.join(results_dir, f"corner_plot_{run_id}.png")
+        fig.savefig(main_plot_file)
+        
+        # Create a symlink to latest run for easy access
+        latest_link = os.path.join(savepoints_dir, "latest_run")
+        try:
+            # Remove old link if exists
+            if os.path.exists(latest_link):
+                if os.path.islink(latest_link):
+                    os.unlink(latest_link)
+                else:
+                    os.remove(latest_link)
+            
+            # Create symlink on Unix or create a shortcut file on Windows
+            if os.name == 'posix':  # Unix/Linux/Mac
+                os.symlink(run_dir, latest_link)
+            else:  # Windows - create a .txt pointer file
+                with open(latest_link + ".txt", "w") as f:
+                    f.write(f"Latest run directory: {run_dir}")
+            
+            print(f"Link to latest run created")
+        except Exception as e:
+            print(f"Could not create link to latest run: {e}")
 
     except Exception as e:
         print(f"Error processing results: {e}")

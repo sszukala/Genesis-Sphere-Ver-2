@@ -1,0 +1,2 @@
+Step,Epoch,Batch_Speed,Elapsed_Min,Remaining_Min,Memory_MB
+5,0.16,0.4,6.31,6299.66,708.1
