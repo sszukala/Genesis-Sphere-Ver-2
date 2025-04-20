@@ -892,7 +892,7 @@ def main():
     parser.add_argument("--initial_omega", type=float, default=3.5, help="Initial guess for omega")
     parser.add_argument("--initial_beta", type=float, default=-0.0333, help="Initial guess for beta")
     parser.add_argument("--output_suffix", type=str, default="", help="Optional suffix for output filenames")
-    parser.add_argument("--checkpoint_interval", type=int, default=100, 
+    parser.add_argument("--checkpoint_interval", type=int, default=250, 
                         help="Save intermediate results every N steps (0 to disable)")
     parser.add_argument("--test_mode", action="store_true", 
                         help="Run in test mode with reduced computation")
@@ -955,7 +955,7 @@ def main():
         args.nwalkers = 24  # Reduced from default
         args.nsteps = 2000  # Reduced from 5000
         args.nburn = 500    # Reduced from 1000
-        args.checkpoint_interval = 50  # More frequent checkpoints
+        args.checkpoint_interval = 100  # Less frequent checkpoints (was 50)
         args.max_time = min(args.max_time, 120)  # Cap at 2 hours max
 
     # Modify parameters if in test mode
@@ -964,7 +964,7 @@ def main():
         args.nwalkers = 10
         args.nsteps = 25  # Reduced from 50 to 25 steps for quicker testing
         args.nburn = 10
-        args.checkpoint_interval = 5  # More frequent checkpoints (was 10)
+        args.checkpoint_interval = 10  # Less frequent checkpoints (was 5)
     
     # Validate walker count
     if args.nwalkers <= 2 * N_DIM:
@@ -1320,7 +1320,7 @@ def main():
             checkpoint_counter += steps
             time_since_last_checkpoint = time.time() - last_checkpoint_time
             
-            if (args.checkpoint_interval > 0 and checkpoint_counter >= args.checkpoint_interval) or time_since_last_checkpoint > 180:  # 3 minutes (was 5)
+            if (args.checkpoint_interval > 0 and checkpoint_counter >= args.checkpoint_interval) or time_since_last_checkpoint > 300:  # 5 minutes (was 3)
                 print(f"\nSaving checkpoint after {steps_completed} steps...")
                 saved_file = save_intermediate_results(
                     sampler, args.nburn, run_dir, f"mcmc", 
