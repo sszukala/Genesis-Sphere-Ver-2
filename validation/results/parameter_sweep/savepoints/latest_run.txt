@@ -1,0 +1,1 @@
+Latest run directory: C:\Users\sszuk\OneDrive\Desktop\Genesis ETL Project\Sphere\Genesis-Sphere-Ver-2\validation\results\parameter_sweep\savepoints\run_20250420_181810

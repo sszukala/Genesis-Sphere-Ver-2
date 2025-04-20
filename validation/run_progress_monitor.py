@@ -14,6 +14,9 @@ from datetime import datetime, timedelta
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+import json
+import numpy as np
+import re
 
 def read_latest_progress(log_file):
     """Read the latest progress information from the log file."""
@@ -143,146 +146,372 @@ def monitor_plot_mode(run_dir, refresh_rate=5):
     progress_line, = ax1.plot([], [], 'b-', label='Progress (%)')
     speed_line, = ax1.plot([], [], 'r-', label='Speed (samples/s)', alpha=0.7)
     ax1.set_xlim(0, 10)  # Will be adjusted
-    ax1.set_ylim(0, 100)
+    ax1.set_ylim(0, 110)  # 0-100% with a little headroom
+    ax1.set_ylabel('Progress (%) / Speed')
     ax1.set_xlabel('Time (minutes)')
-    ax1.set_ylabel('Progress (%)')
     ax1.grid(True)
     ax1.legend(loc='upper left')
     
-    # Create a second y-axis for speed
+    # Create a second y-axis for the remaining time
     ax1_twin = ax1.twinx()
-    ax1_twin.set_ylabel('Samples/second')
-    ax1_twin.set_ylim(0, 100)  # Will be adjusted
+    remaining_line, = ax1_twin.plot([], [], 'g-', label='Remaining Time (min)')
+    ax1_twin.set_ylabel('Remaining Time (min)')
+    ax1_twin.set_ylim(0, 120)  # Initial scale, will adjust
+    ax1_twin.legend(loc='upper right')
     
-    # Parameter convergence plot
-    omega_line, = ax2.plot([], [], 'g-', label='ω (Omega)')
-    beta_line, = ax2.plot([], [], 'm-', label='β (Beta)')
-    score_line, = ax2.plot([], [], 'k--', label='Score', alpha=0.5)
+    # Memory usage plot
+    memory_line, = ax2.plot([], [], 'g-', label='Memory (MB)')
     ax2.set_xlim(0, 10)  # Will be adjusted
-    ax2.set_ylim(-1, 4)  # Will be adjusted
+    ax2.set_ylim(0, 100)  # Will be adjusted
+    ax2.set_ylabel('Memory Usage (MB)')
     ax2.set_xlabel('Time (minutes)')
-    ax2.set_ylabel('Parameter Values')
     ax2.grid(True)
     ax2.legend(loc='upper left')
     
-    # Create a second y-axis for score
-    ax2_twin = ax2.twinx()
-    ax2_twin.set_ylabel('Score')
-    ax2_twin.set_ylim(-1, 1)  # Will be adjusted
+    # Add a text box for summary information
+    info_text = ax1.text(0.02, 0.97, '', transform=ax1.transAxes, 
+                         verticalalignment='top', bbox=dict(boxstyle='round', 
+                         facecolor='wheat', alpha=0.5), fontsize=9)
     
-    # Progress data
-    time_data = []
-    progress_data = []
-    speed_data = []
+    # Add estimation quality indicator
+    estimate_quality = ax1_twin.text(0.98, 0.97, '', transform=ax1_twin.transAxes,
+                                  verticalalignment='top', horizontalalignment='right',
+                                  bbox=dict(boxstyle='round', facecolor='lightgreen', alpha=0.5),
+                                  fontsize=8)
+
+    # Initialize variables
+    max_remaining = 120  # Initial scale for remaining time (minutes)
+    target_epochs = 100   # Default value, will be updated from run_info.json if available
     
-    # Parameter data
-    summary_time = []
-    omega_data = []
-    beta_data = []
-    score_data = []
-    
-    # Text annotations
-    progress_text = ax1.text(0.02, 0.95, '', transform=ax1.transAxes, va='top')
-    eta_text = ax1.text(0.02, 0.90, '', transform=ax1.transAxes, va='top')
-    param_text = ax2.text(0.02, 0.95, '', transform=ax2.transAxes, va='top')
-    
-    def init():
-        progress_line.set_data([], [])
-        speed_line.set_data([], [])
-        omega_line.set_data([], [])
-        beta_line.set_data([], [])
-        score_line.set_data([], [])
-        return progress_line, speed_line, omega_line, beta_line, score_line, progress_text, eta_text, param_text
-    
+    # Function to update plot
     def update(frame):
-        # Read progress data
+        nonlocal max_remaining, target_epochs
+        
         try:
-            if os.path.exists(progress_log):
+            if not os.path.exists(progress_log):
+                return progress_line, speed_line, remaining_line, memory_line, info_text, estimate_quality
+            
+            # Read data
+            try:
                 df = pd.read_csv(progress_log)
-                if not df.empty:
-                    # Extract data
-                    time_data.clear()
-                    progress_data.clear()
-                    speed_data.clear()
+                if len(df) == 0:
+                    return progress_line, speed_line, remaining_line, memory_line, info_text, estimate_quality
+            except (pd.errors.EmptyDataError, pd.errors.ParserError):
+                return progress_line, speed_line, remaining_line, memory_line, info_text, estimate_quality
+                
+            # Calculate elapsed time from first to last entry
+            times = df['Elapsed_Min'].values
+            progress = df['Epoch'].values * 100 / target_epochs  # Convert to percentage
+            speeds = df['Batch_Speed'].values
+            memory = df['Memory_MB'].values if 'Memory_MB' in df.columns else np.zeros_like(times)
+            remaining = df['Remaining_Min'].values
+            
+            # Apply a moving average to the remaining time to smooth out spikes
+            window_size = min(10, len(remaining))
+            if window_size > 0:
+                # Calculate weighted moving average (recent values have more weight)
+                weights = np.linspace(0.5, 1.0, window_size)
+                weights = weights / np.sum(weights)
+                
+                # Apply weighted moving average with a cap on maximum time
+                MAX_REASONABLE_HOURS = 24  # Cap at 24 hours
+                for i in range(len(remaining)):
+                    # For early estimates, use more aggressive smoothing
+                    if progress[i] < 5:  # First 5% of progress
+                        # Cap initial estimates more aggressively
+                        remaining[i] = min(remaining[i], MAX_REASONABLE_HOURS * 30)
+                    elif progress[i] < 15:  # First 15% of progress
+                        # Still cap, but less aggressively
+                        remaining[i] = min(remaining[i], MAX_REASONABLE_HOURS * 60)
+                    else:
+                        # Regular cap for established estimates
+                        remaining[i] = min(remaining[i], MAX_REASONABLE_HOURS * 120)
                     
-                    time_data.extend(df['Elapsed_Min'].values)
-                    progress_data.extend(df['Progress_Pct'].values if 'Progress_Pct' in df.columns else [0] * len(df))
-                    speed_data.extend(df['Batch_Speed'].values)
-                    
-                    # Update progress plot
-                    progress_line.set_data(time_data, progress_data)
-                    speed_line.set_data(time_data, speed_data)
-                    
-                    # Adjust axis limits if needed
-                    if time_data:
-                        ax1.set_xlim(0, max(10, max(time_data) * 1.1))
-                    if speed_data:
-                        max_speed = max(speed_data) * 1.1
-                        ax1_twin.set_ylim(0, max_speed)
-                    
-                    # Update progress text
-                    latest = df.iloc[-1]
-                    progress_pct = latest.get('Progress_Pct', 0) if 'Progress_Pct' in latest else 0
-                    elapsed = latest.get('Elapsed_Min', 0)
-                    remaining = latest.get('Remaining_Min', 0)
-                    
-                    progress_text.set_text(f'Progress: {progress_pct:.1f}% - Elapsed: {format_time(elapsed)}')
-                    est_completion = datetime.now() + timedelta(minutes=remaining)
-                    eta_text.set_text(f'ETA: {est_completion.strftime("%Y-%m-%d %H:%M:%S")}')
+                # Apply smoothing to the whole array
+                if len(remaining) >= window_size:
+                    smoothed = np.zeros_like(remaining)
+                    for i in range(window_size - 1, len(remaining)):
+                        smoothed[i] = np.sum(weights * remaining[i-window_size+1:i+1])
+                    # Only replace values after we have enough data for smoothing
+                    remaining[window_size-1:] = smoothed[window_size-1:]
+            
+            # Update the max remaining time for y-axis scaling
+            current_max = np.max(remaining) if len(remaining) > 0 else 120
+            max_remaining = max(min(current_max * 1.2, 24*60), 120)  # Cap at 24 hours, min 2 hours
+            
+            # Update the lines
+            progress_line.set_data(times, progress)
+            speed_line.set_data(times, speeds)
+            remaining_line.set_data(times, remaining)
+            memory_line.set_data(times, memory)
+            
+            # Adjust axes limits
+            ax1.set_xlim(0, max(10, np.max(times) * 1.1))
+            ax2.set_xlim(0, max(10, np.max(times) * 1.1))
+            
+            # Update memory axis limit if needed
+            if len(memory) > 0 and np.max(memory) > 0:
+                ax2.set_ylim(0, max(100, np.max(memory) * 1.1))
+            
+            # Update remaining time axis
+            ax1_twin.set_ylim(0, max_remaining)
+            
+            # Read summary log for additional info
+            summary_info = "No summary data available"
+            estimation_quality = "Initializing..."
+            estimation_color = "yellow"
+            
+            try:
+                if os.path.exists(summary_log) and os.path.getsize(summary_log) > 0:
+                    summary_df = pd.read_csv(summary_log)
+                    if len(summary_df) > 0:
+                        last_row = summary_df.iloc[-1]
+                        
+                        # Format the summary information
+                        summary_info = (
+                            f"Steps: {int(last_row['Steps_Completed'])}\n"
+                            f"Best params: ω={last_row['Best_Omega']:.3f}, β={last_row['Best_Beta']:.3f}\n"
+                            f"Acc. rate: {last_row['Acceptance_Rate']:.2f}\n"
+                            f"Est. completion: {estimated_completion(df)}"
+                        )
+                        
+                        # Determine estimation quality based on progress
+                        latest_progress = progress[-1] if len(progress) > 0 else 0
+                        if latest_progress < 5:
+                            estimation_quality = "Initializing estimate..."
+                            estimation_color = "yellow" 
+                        elif latest_progress < 15:
+                            estimation_quality = "Estimate stabilizing..."
+                            estimation_color = "khaki"
+                        elif latest_progress < 30:
+                            estimation_quality = "Estimate improving"
+                            estimation_color = "palegreen"
+                        else:
+                            estimation_quality = "Estimate reliable"
+                            estimation_color = "lightgreen"
+            except Exception as e:
+                summary_info = f"Error reading summary: {str(e)}"
+            
+            info_text.set_text(summary_info)
+            estimate_quality.set_text(estimation_quality)
+            estimate_quality.set_bbox(dict(facecolor=estimation_color, alpha=0.5, boxstyle='round'))
+            
+            # Extract run info if available to get target epochs
+            try:
+                run_info_path = os.path.join(run_dir, "run_info.json")
+                if os.path.exists(run_info_path):
+                    with open(run_info_path, 'r') as f:
+                        run_info = json.load(f)
+                        walkers = run_info.get('nwalkers', 32)
+                        steps = run_info.get('nsteps', 5000)
+                        target_epochs = steps / walkers if walkers > 0 else 100
+            except Exception:
+                pass
+                
         except Exception as e:
-            print(f"Error updating progress plot: {e}")
+            print(f"Error updating plot: {e}")
+            import traceback
+            traceback.print_exc()
         
-        # Read summary data
-        try:
-            if os.path.exists(summary_log):
-                df = pd.read_csv(summary_log)
-                if not df.empty:
-                    # Extract data
-                    summary_time.clear()
-                    omega_data.clear()
-                    beta_data.clear()
-                    score_data.clear()
-                    
-                    summary_time.extend(df['Elapsed_Min'].values)
-                    omega_data.extend(df['Best_Omega'].values)
-                    beta_data.extend(df['Best_Beta'].values)
-                    score_data.extend(df['Best_Score'].values)
-                    
-                    # Update parameter plot
-                    omega_line.set_data(summary_time, omega_data)
-                    beta_line.set_data(summary_time, beta_data)
-                    score_line.set_data(summary_time, score_data)
-                    
-                    # Adjust axis limits if needed
-                    if summary_time:
-                        ax2.set_xlim(0, max(10, max(summary_time) * 1.1))
-                    
-                    if omega_data and beta_data:
-                        min_param = min(min(omega_data), min(beta_data)) * 1.1
-                        max_param = max(max(omega_data), max(beta_data)) * 1.1
-                        ax2.set_ylim(min_param, max_param)
-                    
-                    if score_data:
-                        min_score = min(score_data) * 1.1
-                        max_score = max(score_data) * 1.1
-                        ax2_twin.set_ylim(min_score, max_score)
-                    
-                    # Update parameter text
-                    if omega_data and beta_data and score_data:
-                        param_text.set_text(f'Latest: ω={omega_data[-1]:.4f}, β={beta_data[-1]:.4f}, Score={score_data[-1]:.4f}')
-        except Exception as e:
-            print(f"Error updating parameter plot: {e}")
-        
-        return progress_line, speed_line, omega_line, beta_line, score_line, progress_text, eta_text, param_text
+        return progress_line, speed_line, remaining_line, memory_line, info_text, estimate_quality
     
-    # Fix the animation warning by setting cache_frame_data=False
-    # This prevents building up an unbounded cache during long monitoring sessions
-    ani = FuncAnimation(fig, update, frames=None, init_func=init, blit=True, 
-                        interval=refresh_rate*1000, cache_frame_data=False, save_count=100)
+    def estimated_completion(df):
+        """Calculate estimated completion time based on current progress."""
+        if len(df) < 2:
+            return "Calculating..."
+        
+        try:
+            last_row = df.iloc[-1]
+            remaining_min = last_row['Remaining_Min']
+            
+            # Apply sanity check to remaining time
+            MAX_HOURS = 48
+            remaining_min = min(remaining_min, MAX_HOURS * 60)
+            
+            # Calculate estimated completion time
+            now = datetime.now()
+            eta = now + timedelta(minutes=remaining_min)
+            return eta.strftime("%Y-%m-%d %H:%M")
+        except Exception as e:
+            return f"Calculating... ({str(e)})"
+    
+    # Add a progress bar title
+    fig.suptitle(f"Parameter Sweep Progress Monitor - {os.path.basename(run_dir)}", fontsize=14)
+    
+    # Try to load run info to get target epochs
+    try:
+        run_info_path = os.path.join(run_dir, "run_info.json")
+        if os.path.exists(run_info_path):
+            with open(run_info_path, 'r') as f:
+                run_info = json.load(f)
+                walkers = run_info.get('nwalkers', 32)
+                steps = run_info.get('nsteps', 5000)
+                target_epochs = steps / walkers if walkers > 0 else 100
+    except Exception as e:
+        print(f"Could not load run info: {e}")
+    
+    # Create animation
+    ani = FuncAnimation(
+        fig, update, frames=None, 
+        blit=True, interval=refresh_rate*1000, 
+        cache_frame_data=False  # Add this parameter to fix the warning
+    )
     
     plt.tight_layout()
-    plt.subplots_adjust(top=0.9)  # Make room for suptitle
-    plt.show()
+    plt.subplots_adjust(top=0.9, hspace=0.3)
+    
+    try:
+        plt.show()
+    except KeyboardInterrupt:
+        print("\nExiting monitor...")
+        sys.exit(0)
+
+def monitor_terminal_mode(run_dir, refresh_rate=5):
+    """Monitor progress in terminal mode."""
+    progress_log = os.path.join(run_dir, "progress_log.txt")
+    summary_log = os.path.join(run_dir, "summary_log.txt")
+    
+    print(f"Launching terminal progress monitor for {run_dir}")
+    print("Press Ctrl+C to exit")
+    
+    # Initialize tracking variables
+    last_step = 0
+    start_time = time.time()
+    last_update = 0
+    
+    # ANSI color codes for terminal output
+    GREEN = "\033[92m"
+    YELLOW = "\033[93m"
+    CYAN = "\033[96m"
+    BOLD = "\033[1m"
+    RESET = "\033[0m"
+    
+    try:
+        while True:
+            current_time = time.time()
+            
+            # Only update at the specified interval
+            if current_time - last_update < refresh_rate:
+                time.sleep(0.5)  # Check more frequently but only update at interval
+                continue
+                
+            last_update = current_time
+            
+            # Clear terminal (works on most terminals)
+            os.system('cls' if os.name == 'nt' else 'clear')
+            
+            print(f"{BOLD}===== Parameter Sweep Monitor ====={RESET}")
+            print(f"{BOLD}Run directory:{RESET} {run_dir}")
+            print(f"{BOLD}Elapsed time:{RESET} {(current_time - start_time) / 60:.1f} minutes")
+            print(f"{BOLD}{'='*35}{RESET}")
+            
+            try:
+                # Check if logs exist
+                if not os.path.exists(progress_log):
+                    print(f"{YELLOW}Waiting for progress log to be created...{RESET}")
+                    time.sleep(refresh_rate)
+                    continue
+                    
+                # Read progress log
+                try:
+                    df_progress = pd.read_csv(progress_log)
+                    if len(df_progress) == 0:
+                        print(f"{YELLOW}Progress log exists but contains no data yet.{RESET}")
+                        time.sleep(refresh_rate)
+                        continue
+                except Exception as e:
+                    print(f"{YELLOW}Error reading progress log: {e}{RESET}")
+                    time.sleep(refresh_rate)
+                    continue
+                
+                # Extract latest progress
+                latest = df_progress.iloc[-1]
+                
+                # Calculate progress percentage
+                if 'Epoch' in latest:
+                    # Try to get target epochs from run_info.json
+                    target_epochs = 100  # Default
+                    try:
+                        run_info_path = os.path.join(run_dir, "run_info.json")
+                        if os.path.exists(run_info_path):
+                            with open(run_info_path, 'r') as f:
+                                run_info = json.load(f)
+                                walkers = run_info.get('nwalkers', 32)
+                                steps = run_info.get('nsteps', 5000)
+                                target_epochs = steps / walkers if walkers > 0 else 100
+                    except Exception:
+                        pass
+                        
+                    progress_pct = (latest['Epoch'] / target_epochs) * 100
+                else:
+                    progress_pct = 0
+                
+                # Format and display progress information
+                progress_bar = "█" * int(progress_pct / 2) + "░" * (50 - int(progress_pct / 2))
+                print(f"{BOLD}Progress:{RESET} {progress_bar} {progress_pct:.1f}%")
+                
+                # Calculate time estimates with sanity checks
+                remaining_min = min(latest.get('Remaining_Min', float('inf')), 24*60)  # Cap at 24 hours
+                eta = datetime.now() + timedelta(minutes=remaining_min)
+                eta_str = eta.strftime("%Y-%m-%d %H:%M")
+                
+                # Determine reliability of estimate
+                reliability = ""
+                if progress_pct < 5:
+                    reliability = f"{YELLOW}(initializing){RESET}"
+                elif progress_pct < 15:
+                    reliability = f"{YELLOW}(stabilizing){RESET}"
+                
+                print(f"{BOLD}Step:{RESET} {int(latest.get('Step', 0))}")
+                print(f"{BOLD}Epoch:{RESET} {latest.get('Epoch', 0):.2f}")
+                print(f"{BOLD}Processing speed:{RESET} {latest.get('Batch_Speed', 0):.1f} samples/s")
+                print(f"{BOLD}Memory usage:{RESET} {latest.get('Memory_MB', 0):.1f} MB")
+                print(f"{BOLD}Est. remaining time:{RESET} {int(remaining_min//60)}h {int(remaining_min%60)}m {reliability}")
+                print(f"{BOLD}Est. completion:{RESET} {eta_str} {reliability}")
+                
+                # Check if summary log exists
+                if os.path.exists(summary_log) and os.path.getsize(summary_log) > 0:
+                    try:
+                        df_summary = pd.read_csv(summary_log)
+                        if len(df_summary) > 0:
+                            latest_summary = df_summary.iloc[-1]
+                            
+                            # Extract best parameters
+                            best_omega = latest_summary.get('Best_Omega', 'N/A')
+                            best_beta = latest_summary.get('Best_Beta', 'N/A')
+                            best_score = latest_summary.get('Best_Score', 'N/A')
+                            acceptance = latest_summary.get('Acceptance_Rate', 'N/A')
+                            
+                            print(f"\n{BOLD}===== Current Results ====={RESET}")
+                            print(f"{BOLD}Best parameters:{RESET} ω={best_omega}, β={best_beta}")
+                            print(f"{BOLD}Best score:{RESET} {best_score}")
+                            print(f"{BOLD}Acceptance rate:{RESET} {acceptance}")
+                    except Exception as e:
+                        print(f"\n{YELLOW}Error reading summary log: {e}{RESET}")
+                else:
+                    print(f"\n{YELLOW}Waiting for summary information...{RESET}")
+                
+                # Update last known step
+                last_step = int(latest.get('Step', 0))
+                
+            except Exception as e:
+                print(f"{YELLOW}Error updating progress display: {e}{RESET}")
+                import traceback
+                traceback.print_exc()
+            
+            print(f"\n{BOLD}Press Ctrl+C to exit monitor{RESET}")
+            
+            # Sleep until next update
+            time.sleep(1)  # Short sleep to allow for Ctrl+C
+            
+    except KeyboardInterrupt:
+        print("\nExiting monitor...")
+        sys.exit(0)
+    except Exception as e:
+        print(f"Error in monitor: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
 
 def list_run_directories():
     """List available run directories."""
@@ -332,6 +561,48 @@ def select_run_directory():
     except ValueError:
         print("Invalid input. Please enter a number.")
         return None
+
+def find_latest_run(base_dir=None):
+    """Find the most recent run directory."""
+    if base_dir is None:
+        # Try to locate the default directory structure
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        base_dir = os.path.join(script_dir, "results", "parameter_sweep", "runs")
+        savepoints_dir = os.path.join(script_dir, "results", "parameter_sweep", "savepoints")
+        
+        # Check if either directory exists
+        if not os.path.exists(base_dir) and os.path.exists(savepoints_dir):
+            base_dir = savepoints_dir
+        elif not os.path.exists(base_dir) and not os.path.exists(savepoints_dir):
+            print("Could not find default run directories.")
+            return None
+    
+    # Find all directories that match the run pattern
+    run_pattern = re.compile(r'run_\d{8}_\d{6}')
+    run_dirs = []
+    
+    for item in os.listdir(base_dir):
+        item_path = os.path.join(base_dir, item)
+        if os.path.isdir(item_path) and run_pattern.match(item):
+            run_dirs.append(item_path)
+    
+    if not run_dirs:
+        # Try to find in savepoints directory if main directory has no runs
+        if base_dir.endswith("runs"):
+            savepoints_dir = os.path.join(os.path.dirname(base_dir), "savepoints")
+            if os.path.exists(savepoints_dir):
+                for item in os.listdir(savepoints_dir):
+                    item_path = os.path.join(savepoints_dir, item)
+                    if os.path.isdir(item_path) and run_pattern.match(item):
+                        run_dirs.append(item_path)
+    
+    if not run_dirs:
+        print("No run directories found.")
+        return None
+    
+    # Sort by creation time (most recent first)
+    latest_dir = max(run_dirs, key=os.path.getctime)
+    return latest_dir
 
 def main():
     parser = argparse.ArgumentParser(description="Monitor parameter sweep validation progress")

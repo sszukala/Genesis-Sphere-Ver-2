@@ -484,6 +484,51 @@ def download_all_celestial_datasets():
     
     return results
 
+def get_dataset_description(dataset_name):
+    """Returns a description for the specified dataset"""
+    descriptions = {
+        "H0": "Historical Hubble constant (H₀) measurements from 1927-2022, including values from Hubble's original work through the latest SH0ES and Planck results.",
+        "SNeIa": "Type Ia supernovae distance modulus measurements, primarily from the Pantheon+ or Union2.1 datasets, providing constraints on cosmic expansion history.",
+        "BAO": "Baryon Acoustic Oscillation measurements from multiple surveys including SDSS, BOSS, and eBOSS, with particular focus on the sound horizon scale.",
+        "CMB": "Cosmic Microwave Background parameters derived from the Planck 2018 results, providing constraints on early universe physics.",
+        "DistMod": "Distance modulus lookup table for various cosmological models, useful for comparing model predictions at different redshifts.",
+        "GalBase": "Basic galaxy catalog with synthetic data matching realistic redshift and property distributions.",
+    }
+    return descriptions.get(dataset_name, "No description available")
+
+def get_dataset_details(dataset_name):
+    """Returns additional details for the specified dataset"""
+    details = {
+        "H0": {
+            "Sample size": "20-30 measurements across time",
+            "Format": "CSV with year, H0 value, error, and method columns",
+            "Sources": "Multiple published studies including HST Key Project, SH0ES, Planck"
+        },
+        "SNeIa": {
+            "Sample size": "~1000 supernovae",
+            "Format": "CSV with redshift, distance modulus, and uncertainty",
+            "Sources": "Pantheon+, Union2.1, or synthetic data if unavailable"
+        },
+        "BAO": {
+            "Sample size": "8-12 measurements at different redshifts",
+            "Format": "CSV with redshift, sound horizon scale, and uncertainty",
+            "Sources": "SDSS, BOSS, eBOSS, 6dFGS, and others"
+        },
+        "CMB": {
+            "Format": "CSV with parameter name, value, error, and description",
+            "Sources": "Primarily Planck 2018 results"
+        },
+        "DistMod": {
+            "Format": "CSV with redshift, distance modulus values for different cosmologies",
+            "Models": "Standard ΛCDM, Planck 2018, WMAP9, Einstein-de Sitter, and SH0ES"
+        },
+        "GalBase": {
+            "Sample size": "~100 synthetic galaxies",
+            "Format": "CSV with ID, coordinates, redshift, type, and magnitude"
+        }
+    }
+    return details.get(dataset_name, {})
+
 def main():
     """Main function to download and process celestial datasets"""
     print("\nCelestial Astronomical Datasets Downloader for Genesis-Sphere")
@@ -497,8 +542,24 @@ def main():
                        help="Specific dataset to download (default: all)")
     parser.add_argument("--convert", action="store_true", help="Convert datasets to Genesis-Sphere format")
     parser.add_argument("--plot", action="store_true", help="Generate preview plots")
+    parser.add_argument("--list", action="store_true", help="List available datasets with descriptions")
     
     args = parser.parse_args()
+    
+    # Handle the --list argument to show detailed dataset information
+    if args.list:
+        print("\nDetailed Dataset Descriptions:")
+        print("-----------------------------")
+        for dataset in available_datasets:
+            description = get_dataset_description(dataset)
+            print(f"\n{dataset}:")
+            print(f"  {description}")
+            # Show additional details like sample size, format, etc. if available
+            details = get_dataset_details(dataset)
+            if details:
+                for key, value in details.items():
+                    print(f"  {key}: {value}")
+        return
     
     if args.dataset == 'all':
         results = download_all_celestial_datasets()
