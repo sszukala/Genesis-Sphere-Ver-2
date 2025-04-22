@@ -933,18 +933,18 @@ def main():
     # Add arguments for fixed parameters, data paths, MCMC settings, etc.
     parser.add_argument("--alpha", type=float, default=0.02, help="Fixed alpha value")
     parser.add_argument("--epsilon", type=float, default=0.1, help="Fixed epsilon value")
-    parser.add_argument("--nwalkers", type=int, default=32, help="Number of MCMC walkers (must be > 2*N_DIM)")
-    parser.add_argument("--nsteps", type=int, default=5000, help="Number of MCMC steps per walker")
-    parser.add_argument("--nburn", type=int, default=1000, help="Number of burn-in steps to discard")
+    parser.add_argument("--nwalkers", type=int, default=48, help="Number of MCMC walkers (must be > 2*N_DIM)")
+    parser.add_argument("--nsteps", type=int, default=10000, help="Number of MCMC steps per walker")
+    parser.add_argument("--nburn", type=int, default=2000, help="Number of burn-in steps to discard")
     parser.add_argument("--initial_omega", type=float, default=3.5, help="Initial guess for omega")
     parser.add_argument("--initial_beta", type=float, default=0.0333, help="Initial guess for beta")  # Changed from -0.0333 to 0.0333 to match prior
     parser.add_argument("--output_suffix", type=str, default="", help="Optional suffix for output filenames")
-    parser.add_argument("--checkpoint_interval", type=int, default=250,  # Changed from 100 to 250
+    parser.add_argument("--checkpoint_interval", type=int, default=500,  # Changed from 250 to 500
                         help="Save intermediate results every N steps (0 to disable)")
     parser.add_argument("--test_mode", action="store_true", 
                         help="Run in test mode with reduced computation")
-    parser.add_argument("--max_time", type=int, default=30,
-                        help="Maximum runtime in minutes (default: 30 minutes)")
+    parser.add_argument("--max_time", type=int, default=15,
+                        help="Maximum runtime in minutes (default: 15 minutes)")
     parser.add_argument("--resume", type=str, default="", 
                         help="Path to state file to resume from a previous run")
     parser.add_argument("--force_cpu", action="store_true",
@@ -959,8 +959,8 @@ def main():
                         help="Show enhanced progress tracking with percentage completion")
     parser.add_argument("--slow_mode", action="store_true",
                       help="Run in slow mode with artificial pauses between steps for easier progress monitoring")
-    parser.add_argument("--progress_update_interval", type=int, default=30, 
-                      help="Interval in seconds between progress updates (default: 30)")
+    parser.add_argument("--progress_update_interval", type=int, default=5, 
+                      help="Interval in seconds between progress updates (default: 5)")
     parser.add_argument("--progress_delay", type=float, default=0.0,
                       help="Add a small delay (in seconds) when updating progress to slow down the display")
     parser.add_argument("--max_log_files", type=int, default=5,
@@ -1021,19 +1021,19 @@ def main():
     # Apply quick run settings if requested
     if args.quick_run:
         print("Running in QUICK MODE with reduced computation for faster results")
-        args.nwalkers = 24  # Reduced from default
-        args.nsteps = 2000  # Reduced from 5000
-        args.nburn = 500    # Reduced from 1000
-        args.checkpoint_interval = 100  # Less frequent checkpoints (was 50)
-        args.max_time = min(args.max_time, 120)  # Cap at 2 hours max
+        args.nwalkers = 32  # Increased from 24
+        args.nsteps = 5000  # Increased from 2000 to 5000
+        args.nburn = 1000   # Increased from 500
+        args.checkpoint_interval = 250  # More frequent checkpoints (was 100)
+        args.max_time = min(args.max_time, 15)  # Cap at 15 minutes max (was 3 hours)
 
     # Modify parameters if in test mode
     if args.test_mode:
         print("Running in TEST MODE with reduced computation")
-        args.nwalkers = 10
-        args.nsteps = 25  # Reduced from 50 to 25 steps for quicker testing
-        args.nburn = 10
-        args.checkpoint_interval = 10  # Less frequent checkpoints (was 5)
+        args.nwalkers = 16  # Increased from 10
+        args.nsteps = 100   # Increased from 25 to 100 steps for more substantial testing
+        args.nburn = 20     # Increased from 10
+        args.checkpoint_interval = 25  # More frequent checkpoints for testing (was 10)
     
     # Validate walker count
     if args.nwalkers <= 2 * N_DIM:
@@ -1204,7 +1204,7 @@ def main():
     print("Running with checkpoints and time limit...")
     
     # Run in smaller chunks for checkpointing
-    chunk_size = min(5, args.checkpoint_interval)  # Smaller chunks for more frequent updates (was 50)
+    chunk_size = min(2, args.checkpoint_interval)  # Smaller chunks for more frequent updates (was 50)
     n_chunks = args.nsteps // chunk_size
     remaining_steps = args.nsteps % chunk_size
     
@@ -1230,19 +1230,19 @@ def main():
     
     # Print header for progress table with modified format
     if args.enhanced_progress:
-        print(f"\n{'='*100}")
-        print(f"{'Step':>6s} | {'Epoch':>6s} | {'Speed':>10s} | {'Progress':>8s} | {'Elapsed':>8s} | {'Remain':>8s} | {'Mem(MB)':>8s}")
-        print(f"{'-'*6} | {'-'*6} | {'-'*10} | {'-'*8} | {'-'*8} | {'-'*8}")
+        print(f"\n{'='*120}")
+        print(f"{'Step':>6s} | {'Epoch':>6s} | {'Speed':>10s} | {'Progress':>8s} | {'Elapsed':>8s} | {'Remain':>8s} | {'Mem(MB)':>8s} | {'ETA':>12s}")
+        print(f"{'-'*6} | {'-'*6} | {'-'*10} | {'-'*8} | {'-'*8} | {'-'*8} | {'-'*8} | {'-'*12}")
     else:
-        print(f"\n{'='*80}")
-        print(f"{'Step':>6s} | {'Epoch':>6s} | {'Speed':>10s} | {'Elapsed':>8s} | {'Remain':>8s} | {'Mem(MB)':>8s}")
-        print(f"{'-'*6} | {'-'*6} | {'-'*10} | {'-'*8} | {'-'*8} | {'-'*8}")
+        print(f"\n{'='*100}")
+        print(f"{'Step':>6s} | {'Epoch':>6s} | {'Speed':>10s} | {'Elapsed':>8s} | {'Remain':>8s} | {'Mem(MB)':>8s} | {'ETA':>12s}")
+        print(f"{'-'*6} | {'-'*6} | {'-'*10} | {'-'*8} | {'-'*8} | {'-'*8} | {'-'*12}")
     
     # Track progress percentage
     total_work_units = args.nsteps * args.nwalkers
     completed_work_units = 0
     last_progress_update = time.time()
-    progress_update_interval = args.progress_update_interval  # Changed from hardcoded 10 to use argument
+    progress_update_interval = args.progress_update_interval  # Now defaults to 5 seconds for more frequent updates
     
     # Track time for summaries
     last_summary_time = time.time()
@@ -1327,9 +1327,9 @@ def main():
             
             # Print progress in enhanced or regular format
             if args.enhanced_progress:
-                progress_line = f"{steps_completed:6d} | {current_epoch:6.2f} | {batch_speed:10.1f} | {progress_percentage:7.1f}% | {elapsed_min:8.2f} | {remaining_min:8.2f} | {memory_mb:8.1f}"
+                progress_line = f"{steps_completed:6d} | {current_epoch:6.2f} | {batch_speed:10.1f} | {progress_percentage:7.1f}% | {elapsed_min:8.2f} | {remaining_min:8.2f} | {memory_mb:8.1f} | ETA: {time.strftime('%H:%M:%S', time.localtime(start_time + estimated_total_time))}"
             else:
-                progress_line = f"{steps_completed:6d} | {current_epoch:6.2f} | {batch_speed:10.1f} | {elapsed_min:8.2f} | {remaining_min:8.2f} | {memory_mb:8.1f}"
+                progress_line = f"{steps_completed:6d} | {current_epoch:6.2f} | {batch_speed:10.1f} | {elapsed_min:8.2f} | {remaining_min:8.2f} | {memory_mb:8.1f} | ETA: {time.strftime('%H:%M:%S', time.localtime(start_time + estimated_total_time))}"
             
             # Update progress more frequently (not just after each chunk)
             current_time = time.time()
@@ -1394,8 +1394,8 @@ def main():
                 
                 checkpoint_counter = 0
                 last_checkpoint_time = time.time()
-                print(f"\n{'Step':>6s} | {'Epoch':>6s} | {'Speed':>10s} | {'Elapsed':>8s} | {'Remain':>8s} | {'Mem(MB)':>8s}")
-                print(f"{'-'*6} | {'-'*6} | {'-'*10} | {'-'*8} | {'-'*8} | {'-'*8}")
+                print(f"\n{'Step':>6s} | {'Epoch':>6s} | {'Speed':>10s} | {'Elapsed':>8s} | {'Remain':>8s} | {'Mem(MB)':>8s} | {'ETA':>12s}")
+                print(f"{'-'*6} | {'-'*6} | {'-'*10} | {'-'*8} | {'-'*8} | {'-'*8} | {'-'*12}")
         
         except KeyboardInterrupt:
             print("\nMCMC interrupted by user. Saving current state and exiting.")

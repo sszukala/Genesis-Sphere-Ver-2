@@ -1,0 +1,23 @@
+{
+    "timestamp": "20250422_082305",
+    "fixed_alpha": 0.02,
+    "fixed_epsilon": 0.1,
+    "nwalkers": 32,
+    "nsteps": 5000,
+    "nburn": 1000,
+    "initial_guess": {
+        "omega": 3.5,
+        "beta": 0.0333
+    },
+    "parameter_labels": [
+        "$\\omega$",
+        "$\\beta$"
+    ],
+    "mean_acceptance_fraction": 0.5352967625899281,
+    "execution_time_seconds": 38.624282121658325,
+    "samples_shape": [
+        0,
+        2
+    ],
+    "test_mode": false
+}

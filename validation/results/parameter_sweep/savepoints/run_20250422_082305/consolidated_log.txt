@@ -1,0 +1,5 @@
+# Genesis-Sphere Parameter Sweep - Run Started: 20250422_082305
+# Fixed Parameters: α=0.02, ε=0.1
+# MCMC Settings: Walkers=32, Steps=5000, Burn-in=1000
+# ================================================================================
+
