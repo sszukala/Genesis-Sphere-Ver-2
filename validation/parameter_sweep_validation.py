@@ -732,7 +732,7 @@ def save_intermediate_results(sampler, nburn, output_dir, prefix, fixed_params, 
             
             # Save basic info even if we don't have samples yet
             if consolidated_log and consolidated_log_file:
-                with open(consolidated_log_file, 'a') as f:
+                with open(consolidated_log_file, 'a', encoding='utf-8') as f:
                     f.write(f"No valid samples to save yet at step {step_number}. Need {effective_burn*2} steps for samples.\n")
             
             # Use fixed filenames instead of timestamped ones when using consolidated logs
@@ -757,7 +757,7 @@ def save_intermediate_results(sampler, nburn, output_dir, prefix, fixed_params, 
                 }
             }
             
-            with open(info_file, 'w') as f:
+            with open(info_file, 'w', encoding='utf-8') as f:
                 json.dump(info, f, indent=4)
             print(f"Progress info saved to: {info_file}")
             
@@ -780,7 +780,7 @@ def save_intermediate_results(sampler, nburn, output_dir, prefix, fixed_params, 
         else:
             checkpoint_file = os.path.join(output_dir, f"{prefix}_checkpoint_{timestamp}.csv")
         
-        df_samples.to_csv(checkpoint_file, index=False)
+        df_samples.to_csv(checkpoint_file, index=False, encoding='utf-8')
         
         # Calculate quick stats if we have enough samples
         if len(samples) >= 10:
@@ -868,7 +868,7 @@ def save_intermediate_results(sampler, nburn, output_dir, prefix, fixed_params, 
             
             # If using consolidated logs, append the results to the consolidated log file
             if consolidated_log and consolidated_log_file:
-                with open(consolidated_log_file, 'a') as f:
+                with open(consolidated_log_file, 'a', encoding='utf-8') as f:
                     f.write(f"### Parameter Estimates at Step {step_number}\n")
                     for param, values in results_summary.items():
                         f.write(f"{param}: {values['median']:.4f} (+{values['upper_err']:.4f}/-{values['lower_err']:.4f})\n")
@@ -881,7 +881,7 @@ def save_intermediate_results(sampler, nburn, output_dir, prefix, fixed_params, 
                                 f.write(f"  {metric_name}: {value:.4f}\n")
                     f.write("\n")
             
-            with open(info_file, 'w') as f:
+            with open(info_file, 'w', encoding='utf-8') as f:
                 json.dump(info, f, indent=4)
             
             # Save sampler state for potential recovery
@@ -935,7 +935,7 @@ def main():
     parser.add_argument("--epsilon", type=float, default=0.1, help="Fixed epsilon value")
     parser.add_argument("--nwalkers", type=int, default=32, help="Number of MCMC walkers (must be > 2*N_DIM)")
     parser.add_argument("--nsteps", type=int, default=5000, help="Number of MCMC steps per walker")
-    parser.add_argument("--nburn", type=int, default=1000, help="Number of burn-in steps to discard")
+    parser.add.add_argument("--nburn", type=int, default=1000, help="Number of burn-in steps to discard")
     parser.add_argument("--initial_omega", type=float, default=3.5, help="Initial guess for omega")
     parser.add_argument("--initial_beta", type=float, default=0.0333, help="Initial guess for beta")  # Changed from -0.0333 to 0.0333 to match prior
     parser.add_argument("--output_suffix", type=str, default="", help="Optional suffix for output filenames")
@@ -1004,16 +1004,16 @@ def main():
     
     # Initialize consolidated log if that option is selected
     if args.consolidated_logs:
-        with open(consolidated_log_file, 'w') as f:
+        with open(consolidated_log_file, 'w', encoding='utf-8') as f:
             f.write(f"# Genesis-Sphere Parameter Sweep - Run Started: {timestamp}\n")
             f.write(f"# Fixed Parameters: α={args.alpha}, ε={args.epsilon}\n")
             f.write(f"# MCMC Settings: Walkers={args.nwalkers}, Steps={args.nsteps}, Burn-in={args.nburn}\n")
             f.write(f"# {'='*80}\n\n")
     
-    with open(progress_log_file, 'w') as f:
+    with open(progress_log_file, 'w', encoding='utf-8') as f:
         f.write("Step,Epoch,Batch_Speed,Elapsed_Min,Remaining_Min,Memory_MB,Progress_Pct\n")
     
-    with open(summary_log_file, 'w') as f:
+    with open(summary_log_file, 'w', encoding='utf-8') as f:
         f.write("Timestamp,Elapsed_Min,Steps_Completed,Best_Omega,Best_Beta,Best_Score,Acceptance_Rate,Samples_Per_Sec,Remaining_Min\n")
     
     print(f"All results will be saved to: {run_dir}")
@@ -1222,10 +1222,10 @@ def main():
     progress_log_file = os.path.join(run_dir, f"progress_log.txt")
     summary_log_file = os.path.join(run_dir, f"summary_log.txt")
     
-    with open(progress_log_file, 'w') as f:
+    with open(progress_log_file, 'w', encoding='utf-8') as f:
         f.write("Step,Epoch,Batch_Speed,Elapsed_Min,Remaining_Min,Memory_MB,Progress_Pct\n")
     
-    with open(summary_log_file, 'w') as f:
+    with open(summary_log_file, 'w', encoding='utf-8') as f:
         f.write("Timestamp,Elapsed_Min,Steps_Completed,Best_Omega,Best_Beta,Best_Score,Acceptance_Rate,Samples_Per_Sec,Remaining_Min\n")
     
     # Print header for progress table with modified format
@@ -1338,7 +1338,7 @@ def main():
                 last_progress_update = current_time
                 
                 # Save progress to log
-                with open(progress_log_file, 'a') as f:
+                with open(progress_log_file, 'a', encoding='utf-8') as f:
                     f.write(f"{steps_completed},{current_epoch:.2f},{batch_speed:.1f},{elapsed_min:.2f},{remaining_min:.2f},{memory_mb:.1f},{progress_percentage:.1f}\n")
                 
                 # Add a small delay if requested to slow down progress display
@@ -1361,7 +1361,7 @@ def main():
                 
                 # If using consolidated logs, append extra info to the consolidated log
                 if args.consolidated_logs:
-                    with open(consolidated_log_file, 'a') as f:
+                    with open(consolidated_log_file, 'a', encoding='utf-8') as f:
                         f.write(f"\n## Checkpoint at Step {steps_completed} - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
                         f.write(f"Progress: {progress_percentage:.1f}%, Elapsed: {elapsed_min:.2f} min, Remaining: {remaining_min:.2f} min\n")
                         f.write(f"Current speed: {batch_speed:.1f} samples/s, Memory: {memory_mb:.1f} MB\n\n")
@@ -1460,7 +1460,7 @@ def main():
         # Save the samples (the chain) and final results in run directory
         chain_file = os.path.join(run_dir, f"mcmc_chain.csv")
         df_samples = pd.DataFrame(samples, columns=['omega', 'beta'])
-        df_samples.to_csv(chain_file, index=False)
+        df_samples.to_csv(chain_file, index=False, encoding='utf-8')
         print(f"MCMC samples saved to {chain_file}")
 
         # Save run info (parameters, settings)
@@ -1479,7 +1479,7 @@ def main():
             'test_mode': args.test_mode
         }
         info_file = os.path.join(run_dir, f"run_info.json")
-        with open(info_file, 'w') as f:
+        with open(info_file, 'w', encoding='utf-8') as f:
             json.dump(run_info, f, indent=4)
         print(f"Run info saved to {info_file}")
 
@@ -1532,7 +1532,7 @@ def main():
 
         # Save summary
         summary_file = os.path.join(run_dir, f"mcmc_summary.json")
-        with open(summary_file, 'w') as f:
+        with open(summary_file, 'w', encoding='utf-8') as f:
             json.dump(results_summary, f, indent=4)
         print(f"Summary saved to {summary_file}")
 
@@ -1853,7 +1853,7 @@ def generate_markdown_summary(results_summary, run_info, batch_speeds, acceptanc
     
     # Write to file
     md_filename = os.path.join(output_dir, "mcmc_summary.md")
-    with open(md_filename, 'w') as f:
+    with open(md_filename, 'w', encoding='utf-8') as f:
         f.write('\n'.join(md_content))
     
     return md_filename
