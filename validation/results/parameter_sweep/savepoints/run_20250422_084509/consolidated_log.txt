@@ -1,0 +1,35 @@
+# Genesis-Sphere Parameter Sweep - Run Started: 20250422_084509
+# Fixed Parameters: α=0.02, ε=0.1
+# MCMC Settings: Walkers=48, Steps=10000, Burn-in=2000
+# ================================================================================
+
+
+## Checkpoint at Step 457 - 2025-04-22 08:50:11
+Progress: 4.6%, Elapsed: 5.03 min, Remaining: 100.78 min
+Current speed: 75.8 samples/s, Memory: 517.9 MB
+
+### Parameter Estimates at Step 457
+omega: 1.0159 (+0.0234/-0.0115)
+beta: 0.0016 (+0.0029/-0.0012)
+
+Preliminary performance metrics (approximate):
+  h0_correlation: 0.7216
+  sne_r2: -4.7638
+  bao_effect: 30.1522
+  combined_score: -1.2469
+
+
+## Checkpoint at Step 927 - 2025-04-22 08:55:11
+Progress: 9.3%, Elapsed: 10.03 min, Remaining: 114.00 min
+Current speed: 63.7 samples/s, Memory: 519.6 MB
+
+### Parameter Estimates at Step 927
+omega: 1.0164 (+0.0268/-0.0123)
+beta: 0.0017 (+0.0027/-0.0013)
+
+Preliminary performance metrics (approximate):
+  h0_correlation: 0.8293
+  sne_r2: -4.1626
+  bao_effect: 28.8426
+  combined_score: -1.0149
+

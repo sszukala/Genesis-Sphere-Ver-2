@@ -1,0 +1,36 @@
+{
+    "timestamp": "20250422_090009",
+    "samples_saved": 3312,
+    "current_results": {
+        "omega": {
+            "median": 1.0179317941184558,
+            "lower_err": 0.013742215403474312,
+            "upper_err": 0.027144910596972327
+        },
+        "beta": {
+            "median": 0.001613407697017946,
+            "lower_err": 0.0012115272526975333,
+            "upper_err": 0.002624364807973521
+        }
+    },
+    "fixed_params": {
+        "alpha": 0.02,
+        "epsilon": 0.1,
+        "nwalkers": 48,
+        "nsteps": 10000,
+        "nburn": 2000
+    },
+    "progress": {
+        "step_number": 1386,
+        "batch_speed": 75.39331763556407,
+        "elapsed_minutes": 15.004251702626545,
+        "epoch": 28.875,
+        "percent_complete": 13.86
+    },
+    "preliminary_metrics": {
+        "h0_correlation_approx": 0.677089921100766,
+        "sne_r2_approx": -3.909413780058685,
+        "bao_effect_approx": 30.219039200253565,
+        "combined_score_approx": -0.9767111556517944
+    }
+}
