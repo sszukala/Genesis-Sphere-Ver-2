@@ -1,0 +1,2 @@
+Timestamp,Elapsed_Min,Steps_Completed,Best_Omega,Best_Beta,Best_Score,Acceptance_Rate,Samples_Per_Sec,Remaining_Min
+2025-04-20 19:13:41,15.03,3110,1.6311,-0.5213,-4.4727,0.6355,123.3,7.42

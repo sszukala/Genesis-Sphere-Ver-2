@@ -25,6 +25,7 @@ import signal # For timeout handling
 import gc # For garbage collection
 import psutil # For memory monitoring, install with: pip install psutil
 import pickle # For saving random state
+import shutil # For file operations
 
 # Global flag for GPU status
 HAS_GPU = False
@@ -529,11 +530,9 @@ def log_prior(params):
     This enforces constraints on parameters.
     """
     omega, beta = params
-    # Define parameter ranges based on previous search results and theoretical considerations
-    # NOTE: The current range allows negative β values, which is supported by your previous 
-    # parameter sweep findings where β=-0.0333 produced good results.
-    # If negative β values aren't physically meaningful, consider changing to 0.0 < beta < 3.0
-    if 1.0 < omega < 6.0 and -1.0 < beta < 3.0: 
+    # Modified to only allow positive beta values, as negative values lead to 
+    # unphysical acceleration of time near singularities instead of dilation
+    if 1.0 < omega < 6.0 and 0.0 <= beta < 3.0: 
         return 0.0 # Log(1) = 0 -> uniform prior within bounds
     return -np.inf # Log(0) -> rules out parameters outside bounds
 
@@ -587,20 +586,22 @@ def log_likelihood(params, data_h0, data_sne, data_bao, fixed_alpha, fixed_epsil
             print(f"Error calculating BAO chi2: {e}")
             return -np.inf
 
-        # Calculate total chi-squared (proper statistical approach: simply sum the individual chi-squared values)
-        # NOTE: These chi-squared values should ideally come from standard calculations:
-        # χ² = ∑[(data_i - model_i)²/σ_i²] where σ_i is the uncertainty on the i-th data point
-        total_chi2 = chi2_h0 + chi2_sne + chi2_bao  # No weighting - proper statistical approach
+        # Modified approach: Properly balance dataset contributions based on degrees of freedom
+        # This prevents one dataset from dominating due to different point counts
+        dof_h0 = len(data_h0) - 2  # Subtracting parameter count
+        dof_sne = len(data_sne) - 2
+        dof_bao = len(data_bao) - 2
+        
+        # Use reduced chi-squared (chi²/dof) for balanced weighting
+        reduced_chi2_h0 = chi2_h0 / max(1, dof_h0)
+        reduced_chi2_sne = chi2_sne / max(1, dof_sne)
+        reduced_chi2_bao = chi2_bao / max(1, dof_bao)
+        
+        # Calculate total chi-squared (properly normalized)
+        total_chi2 = (reduced_chi2_h0 + reduced_chi2_sne + reduced_chi2_bao) * (dof_h0 + dof_sne + dof_bao) / 3
 
         # Convert total Chi-squared to Log Likelihood (assuming Gaussian errors)
         logL = -0.5 * total_chi2
-
-        # Check for NaN or infinite results which can break MCMC
-        if not np.isfinite(logL):
-             print(f"Warning: Non-finite logL ({logL}) for ω={omega:.4f}, β={beta:.4f}")
-             return -np.inf
-
-        # Occasional garbage collection to prevent memory buildup
         if np.random.random() < 0.01:  # Do this only occasionally (1% chance)
             gc.collect()
 
@@ -711,7 +712,8 @@ def log_posterior_gpu(params, data_h0, data_sne, data_bao, fixed_alpha, fixed_ep
     return lp + ll
 
 # Function to save intermediate results during MCMC run
-def save_intermediate_results(sampler, nburn, output_dir, prefix, fixed_params, step_number, batch_speed, total_elapsed):
+def save_intermediate_results(sampler, nburn, output_dir, prefix, fixed_params, step_number, batch_speed, total_elapsed, 
+                             consolidated_log=False, consolidated_log_file=None, max_log_files=5, last_checkpoint_files=None):
     """Save intermediate MCMC results for checkpointing"""
     try:
         # Get current timestamp
@@ -729,13 +731,23 @@ def save_intermediate_results(sampler, nburn, output_dir, prefix, fixed_params, 
             print(f"Will be able to save samples after {effective_burn*2} steps.")
             
             # Save basic info even if we don't have samples yet
+            if consolidated_log and consolidated_log_file:
+                with open(consolidated_log_file, 'a') as f:
+                    f.write(f"No valid samples to save yet at step {step_number}. Need {effective_burn*2} steps for samples.\n")
+            
+            # Use fixed filenames instead of timestamped ones when using consolidated logs
+            if consolidated_log:
+                info_file = os.path.join(output_dir, f"{prefix}_progress_info.json")
+            else:
+                info_file = os.path.join(output_dir, f"{prefix}_progress_info_{timestamp}.json")
+                
             info = {
                 'timestamp': timestamp,
                 'samples_saved': 0,
                 'steps_completed': step_number,
                 'current_results': {
                     'omega': {'median': float(fixed_params.get('initial_guess', {}).get('omega', 3.5))},
-                    'beta': {'median': float(fixed_params.get('initial_guess', {}).get('beta', -0.0333))}
+                    'beta': {'median': float(fixed_params.get('initial_guess', {}).get('beta', 0.0333))}
                 },
                 'fixed_params': fixed_params,
                 'progress': {
@@ -745,7 +757,6 @@ def save_intermediate_results(sampler, nburn, output_dir, prefix, fixed_params, 
                 }
             }
             
-            info_file = os.path.join(output_dir, f"{prefix}_progress_info_{timestamp}.json")
             with open(info_file, 'w') as f:
                 json.dump(info, f, indent=4)
             print(f"Progress info saved to: {info_file}")
@@ -754,7 +765,21 @@ def save_intermediate_results(sampler, nburn, output_dir, prefix, fixed_params, 
             
         # Create DataFrame and save
         df_samples = pd.DataFrame(samples, columns=['omega', 'beta'])
-        checkpoint_file = os.path.join(output_dir, f"{prefix}_checkpoint_{timestamp}.csv")
+        
+        # Use fixed filenames when in consolidated log mode, otherwise use timestamps
+        if consolidated_log:
+            checkpoint_file = os.path.join(output_dir, f"{prefix}_checkpoint.csv")
+            backup_checkpoint_file = os.path.join(output_dir, f"{prefix}_checkpoint_backup.csv")
+            
+            # Rotate: if main file exists, copy to backup before overwriting
+            if os.path.exists(checkpoint_file):
+                try:
+                    shutil.copy2(checkpoint_file, backup_checkpoint_file)
+                except Exception as e:
+                    print(f"Warning: Could not create backup of checkpoint file: {e}")
+        else:
+            checkpoint_file = os.path.join(output_dir, f"{prefix}_checkpoint_{timestamp}.csv")
+        
         df_samples.to_csv(checkpoint_file, index=False)
         
         # Calculate quick stats if we have enough samples
@@ -815,6 +840,16 @@ def save_intermediate_results(sampler, nburn, output_dir, prefix, fixed_params, 
                 }
             
             # Save basic info with additional runtime metrics
+            # Use fixed filenames when in consolidated log mode
+            if consolidated_log:
+                info_file = os.path.join(output_dir, f"{prefix}_checkpoint_info.json")
+                state_file = os.path.join(output_dir, f"{prefix}_state.npz")
+                random_state_file = os.path.join(output_dir, f"{prefix}_random_state.pkl")
+            else:
+                info_file = os.path.join(output_dir, f"{prefix}_checkpoint_info_{timestamp}.json")
+                state_file = os.path.join(output_dir, f"{prefix}_state_{timestamp}.npz")
+                random_state_file = os.path.join(output_dir, f"{prefix}_random_state_{timestamp}.pkl")
+            
             info = {
                 'timestamp': timestamp,
                 'samples_saved': len(samples),
@@ -831,14 +866,26 @@ def save_intermediate_results(sampler, nburn, output_dir, prefix, fixed_params, 
                 'preliminary_metrics': performance_metrics
             }
             
-            info_file = os.path.join(output_dir, f"{prefix}_checkpoint_info_{timestamp}.json")
+            # If using consolidated logs, append the results to the consolidated log file
+            if consolidated_log and consolidated_log_file:
+                with open(consolidated_log_file, 'a') as f:
+                    f.write(f"### Parameter Estimates at Step {step_number}\n")
+                    for param, values in results_summary.items():
+                        f.write(f"{param}: {values['median']:.4f} (+{values['upper_err']:.4f}/-{values['lower_err']:.4f})\n")
+                    
+                    if 'preliminary_metrics' in info and len(performance_metrics) > 0:
+                        f.write("\nPreliminary performance metrics (approximate):\n")
+                        for metric, value in performance_metrics.items():
+                            if 'approx' in metric:
+                                metric_name = metric.replace('_approx', '')
+                                f.write(f"  {metric_name}: {value:.4f}\n")
+                    f.write("\n")
+            
             with open(info_file, 'w') as f:
                 json.dump(info, f, indent=4)
             
-            # Save sampler state for potential recovery - Fix array shape issue
+            # Save sampler state for potential recovery
             try:
-                state_file = os.path.join(output_dir, f"{prefix}_state_{timestamp}.npz")
-                
                 # Convert chain to standard numpy array if needed
                 if hasattr(sampler.chain, 'get'):  # Check if it's a CuPy array
                     chain_array = sampler.chain.get()
@@ -846,7 +893,6 @@ def save_intermediate_results(sampler, nburn, output_dir, prefix, fixed_params, 
                     chain_array = np.array(sampler.chain)
                 
                 # Save the random state separately
-                random_state_file = os.path.join(output_dir, f"{prefix}_random_state_{timestamp}.pkl")
                 with open(random_state_file, 'wb') as f:
                     pickle.dump(np.random.get_state(), f)
                 
@@ -856,7 +902,8 @@ def save_intermediate_results(sampler, nburn, output_dir, prefix, fixed_params, 
             except Exception as e:
                 print(f"Warning: Could not save state file: {e}")
                 print("This won't affect the main MCMC process.")
-                
+            
+            # Print results summary
             print(f"Checkpoint saved with {len(samples)} samples. Current estimates:")
             for param, values in results_summary.items():
                 print(f"  {param}: {values['median']:.4f} (+{values['upper_err']:.4f}/-{values['lower_err']:.4f})")
@@ -890,9 +937,9 @@ def main():
     parser.add_argument("--nsteps", type=int, default=5000, help="Number of MCMC steps per walker")
     parser.add_argument("--nburn", type=int, default=1000, help="Number of burn-in steps to discard")
     parser.add_argument("--initial_omega", type=float, default=3.5, help="Initial guess for omega")
-    parser.add_argument("--initial_beta", type=float, default=-0.0333, help="Initial guess for beta")
+    parser.add_argument("--initial_beta", type=float, default=0.0333, help="Initial guess for beta")  # Changed from -0.0333 to 0.0333 to match prior
     parser.add_argument("--output_suffix", type=str, default="", help="Optional suffix for output filenames")
-    parser.add_argument("--checkpoint_interval", type=int, default=250, 
+    parser.add_argument("--checkpoint_interval", type=int, default=250,  # Changed from 100 to 250
                         help="Save intermediate results every N steps (0 to disable)")
     parser.add_argument("--test_mode", action="store_true", 
                         help="Run in test mode with reduced computation")
@@ -912,6 +959,14 @@ def main():
                         help="Show enhanced progress tracking with percentage completion")
     parser.add_argument("--slow_mode", action="store_true",
                       help="Run in slow mode with artificial pauses between steps for easier progress monitoring")
+    parser.add_argument("--progress_update_interval", type=int, default=30, 
+                      help="Interval in seconds between progress updates (default: 30)")
+    parser.add_argument("--progress_delay", type=float, default=0.0,
+                      help="Add a small delay (in seconds) when updating progress to slow down the display")
+    parser.add_argument("--max_log_files", type=int, default=5,
+                      help="Maximum number of backup log files to keep (default: 5)")
+    parser.add_argument("--consolidated_logs", action="store_true",
+                      help="Use consolidated logs - fewer files with more content")
     args = parser.parse_args()    
     
     # Run GPU verification
@@ -944,8 +999,22 @@ def main():
     
     # Create progress tracking file in the run directory
     progress_log_file = os.path.join(run_dir, f"progress_log.txt")
+    summary_log_file = os.path.join(run_dir, f"summary_log.txt")
+    consolidated_log_file = os.path.join(run_dir, f"consolidated_log.txt")
+    
+    # Initialize consolidated log if that option is selected
+    if args.consolidated_logs:
+        with open(consolidated_log_file, 'w') as f:
+            f.write(f"# Genesis-Sphere Parameter Sweep - Run Started: {timestamp}\n")
+            f.write(f"# Fixed Parameters: α={args.alpha}, ε={args.epsilon}\n")
+            f.write(f"# MCMC Settings: Walkers={args.nwalkers}, Steps={args.nsteps}, Burn-in={args.nburn}\n")
+            f.write(f"# {'='*80}\n\n")
+    
     with open(progress_log_file, 'w') as f:
-        f.write("Step,Epoch,Batch_Speed,Elapsed_Min,Remaining_Min,Memory_MB\n")
+        f.write("Step,Epoch,Batch_Speed,Elapsed_Min,Remaining_Min,Memory_MB,Progress_Pct\n")
+    
+    with open(summary_log_file, 'w') as f:
+        f.write("Timestamp,Elapsed_Min,Steps_Completed,Best_Omega,Best_Beta,Best_Score,Acceptance_Rate,Samples_Per_Sec,Remaining_Min\n")
     
     print(f"All results will be saved to: {run_dir}")
     
@@ -1163,7 +1232,7 @@ def main():
     if args.enhanced_progress:
         print(f"\n{'='*100}")
         print(f"{'Step':>6s} | {'Epoch':>6s} | {'Speed':>10s} | {'Progress':>8s} | {'Elapsed':>8s} | {'Remain':>8s} | {'Mem(MB)':>8s}")
-        print(f"{'-'*6} | {'-'*6} | {'-'*10} | {'-'*8} | {'-'*8} | {'-'*8} | {'-'*8}")
+        print(f"{'-'*6} | {'-'*6} | {'-'*10} | {'-'*8} | {'-'*8} | {'-'*8}")
     else:
         print(f"\n{'='*80}")
         print(f"{'Step':>6s} | {'Epoch':>6s} | {'Speed':>10s} | {'Elapsed':>8s} | {'Remain':>8s} | {'Mem(MB)':>8s}")
@@ -1173,7 +1242,7 @@ def main():
     total_work_units = args.nsteps * args.nwalkers
     completed_work_units = 0
     last_progress_update = time.time()
-    progress_update_interval = 10  # seconds
+    progress_update_interval = args.progress_update_interval  # Changed from hardcoded 10 to use argument
     
     # Track time for summaries
     last_summary_time = time.time()
@@ -1181,6 +1250,10 @@ def main():
     best_params = {'omega': args.initial_omega, 'beta': args.initial_beta}
     current_elapsed = 0
     estimated_total_time = float('inf')
+    
+    # Store log management info
+    max_log_files = args.max_log_files
+    last_checkpoint_files = []
     
     for i in range(n_chunks + (1 if remaining_steps > 0 else 0)):
         # Check if we've exceeded max runtime
@@ -1267,67 +1340,58 @@ def main():
                 # Save progress to log
                 with open(progress_log_file, 'a') as f:
                     f.write(f"{steps_completed},{current_epoch:.2f},{batch_speed:.1f},{elapsed_min:.2f},{remaining_min:.2f},{memory_mb:.1f},{progress_percentage:.1f}\n")
-            
-            # Check if it's time for a summary (every summary_interval minutes)
-            time_since_last_summary = time.time() - last_summary_time
-            if time_since_last_summary >= (args.summary_interval * 60):
-                # Print a newline to ensure summary starts on a fresh line
-                print("\n")
-                print(f"\n{'='*100}")
-                print(f"SUMMARY UPDATE - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - {args.summary_interval} minute interval")
-                print(f"{'='*100}")
                 
-                # Calculate and display summary statistics
-                current_summary = print_parameter_summary(sampler, args.nburn, current_elapsed, 
-                                                         steps_completed, batch_speeds, 
-                                                         best_params, best_score)
-                
-                # Update best parameters if we found better ones
-                if current_summary['score'] > best_score:
-                    best_score = current_summary['score']
-                    best_params = {
-                        'omega': current_summary['omega'],
-                        'beta': current_summary['beta']
-                    }
-                
-                # Additional progress information
-                print(f"\nOVERALL PROGRESS: {progress_percentage:.1f}% complete")
-                print(f"Estimated completion time: {datetime.fromtimestamp(start_time + estimated_total_time).strftime('%Y-%m-%d %H:%M:%S')}")
-                print(f"Remaining time: {remaining_min:.1f} minutes")
-                print_memory_usage()
-                
-                # Log summary
-                with open(summary_log_file, 'a') as f:
-                    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    f.write(f"{timestamp},{current_elapsed/60:.2f},{steps_completed},"
-                            f"{current_summary['omega']:.4f},{current_summary['beta']:.4f},"
-                            f"{current_summary['score']:.4f},{current_summary['acceptance']:.4f},"
-                            f"{current_summary['samples_per_second']:.1f},{remaining_min:.2f}\n")
-                last_summary_time = time.time()
-                
-                # Print table header again for progress
-                if args.enhanced_progress:
-                    print(f"\n{'Step':>6s} | {'Epoch':>6s} | {'Speed':>10s} | {'Progress':>8s} | {'Elapsed':>8s} | {'Remain':>8s} | {'Mem(MB)':>8s}")
-                    print(f"{'-'*6} | {'-'*6} | {'-'*10} | {'-'*8} | {'-'*8} | {'-'*8} | {'-'*8}")
-                else:
-                    print(f"\n{'Step':>6s} | {'Epoch':>6s} | {'Speed':>10s} | {'Elapsed':>8s} | {'Remain':>8s} | {'Mem(MB)':>8s}")
-                    print(f"{'-'*6} | {'-'*6} | {'-'*10} | {'-'*8} | {'-'*8} | {'-'*8}")
+                # Add a small delay if requested to slow down progress display
+                if args.progress_delay > 0:
+                    time.sleep(args.progress_delay)
             
             # Print full line after each chunk completes
             print(f"\r{progress_line}")
             
+            # Add a small delay after chunk completes if requested
+            if args.progress_delay > 0:
+                time.sleep(args.progress_delay * 2)  # Double delay for end of chunk
+                
             # Save checkpoint if needed or if enough time has passed
             checkpoint_counter += steps
             time_since_last_checkpoint = time.time() - last_checkpoint_time
             
             if (args.checkpoint_interval > 0 and checkpoint_counter >= args.checkpoint_interval) or time_since_last_checkpoint > 300:  # 5 minutes (was 3)
                 print(f"\nSaving checkpoint after {steps_completed} steps...")
+                
+                # If using consolidated logs, append extra info to the consolidated log
+                if args.consolidated_logs:
+                    with open(consolidated_log_file, 'a') as f:
+                        f.write(f"\n## Checkpoint at Step {steps_completed} - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                        f.write(f"Progress: {progress_percentage:.1f}%, Elapsed: {elapsed_min:.2f} min, Remaining: {remaining_min:.2f} min\n")
+                        f.write(f"Current speed: {batch_speed:.1f} samples/s, Memory: {memory_mb:.1f} MB\n\n")
+                
+                # Pass consolidated log flag to the save_intermediate_results function
                 saved_file = save_intermediate_results(
                     sampler, args.nburn, run_dir, f"mcmc", 
-                    fixed_params, steps_completed, current_batch_speed, current_elapsed
+                    fixed_params, steps_completed, current_batch_speed, current_elapsed,
+                    consolidated_log=args.consolidated_logs, 
+                    consolidated_log_file=consolidated_log_file,
+                    max_log_files=max_log_files,
+                    last_checkpoint_files=last_checkpoint_files
                 )
+                
                 if saved_file:
                     print(f"Checkpoint successfully saved to: {saved_file}")
+                    
+                    # Update the list of last checkpoint files for cleanup
+                    if saved_file not in last_checkpoint_files:
+                        last_checkpoint_files.append(saved_file)
+                        # Keep only the most recent files up to max_log_files
+                        if len(last_checkpoint_files) > max_log_files:
+                            old_file = last_checkpoint_files.pop(0)
+                            if os.path.exists(old_file):
+                                try:
+                                    os.remove(old_file)
+                                    print(f"Removed old checkpoint file: {os.path.basename(old_file)}")
+                                except Exception as e:
+                                    print(f"Warning: Could not remove old checkpoint file: {e}")
+                
                 checkpoint_counter = 0
                 last_checkpoint_time = time.time()
                 print(f"\n{'Step':>6s} | {'Epoch':>6s} | {'Speed':>10s} | {'Elapsed':>8s} | {'Remain':>8s} | {'Mem(MB)':>8s}")
@@ -1824,3 +1888,34 @@ if __name__ == "__main__":
                 pass
                 
         sys.exit(1)
+        
+        # Add a cleanup function to remove excess log files when the script finishes
+        def cleanup_log_files(output_dir, prefix, keep=5):
+            """Clean up excess log files, keeping only the most recent ones"""
+            try:
+                files = []
+                for pattern in [f"{prefix}_checkpoint_*.csv", f"{prefix}_state_*.npz", 
+                               f"{prefix}_random_state_*.pkl", f"{prefix}_*_info_*.json"]:
+                    files.extend(glob.glob(os.path.join(output_dir, pattern)))
+                
+                # Sort files by modification time (newest first)
+                files.sort(key=os.path.getmtime, reverse=True)
+                
+                # Keep the newest 'keep' files, delete the rest
+                if len(files) > keep:
+                    for old_file in files[keep:]:
+                        try:
+                            os.remove(old_file)
+                            print(f"Cleaned up old log file: {os.path.basename(old_file)}")
+                        except Exception as e:
+                            print(f"Warning: Could not remove old log file {os.path.basename(old_file)}: {e}")
+                            
+                return len(files) - keep  # Return count of files removed
+            except Exception as e:
+                print(f"Warning: Error during log file cleanup: {e}")
+                return 0
+        
+        # Register an atexit handler to clean up files when the script exits
+        import atexit
+        import glob
+        atexit.register(lambda: cleanup_log_files(run_dir, "mcmc", keep=5))
