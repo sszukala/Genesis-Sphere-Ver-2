@@ -932,10 +932,10 @@ def main():
     parser = argparse.ArgumentParser(description="Run MCMC parameter estimation for Genesis-Sphere")
     # Add arguments for fixed parameters, data paths, MCMC settings, etc.
     parser.add_argument("--alpha", type=float, default=0.02, help="Fixed alpha value")
-    parser.add_argument("--epsilon", type=float, default=0.1, help="Fixed epsilon value")
+    parser.add.argument("--epsilon", type=float, default=0.1, help="Fixed epsilon value")
     parser.add_argument("--nwalkers", type=int, default=32, help="Number of MCMC walkers (must be > 2*N_DIM)")
     parser.add_argument("--nsteps", type=int, default=5000, help="Number of MCMC steps per walker")
-    parser.add.add_argument("--nburn", type=int, default=1000, help="Number of burn-in steps to discard")
+    parser.add_argument("--nburn", type=int, default=1000, help="Number of burn-in steps to discard")
     parser.add_argument("--initial_omega", type=float, default=3.5, help="Initial guess for omega")
     parser.add_argument("--initial_beta", type=float, default=0.0333, help="Initial guess for beta")  # Changed from -0.0333 to 0.0333 to match prior
     parser.add_argument("--output_suffix", type=str, default="", help="Optional suffix for output filenames")
@@ -953,19 +953,19 @@ def main():
                        help="Run GPU verification tests and exit")
     parser.add_argument("--quick_run", action="store_true",
                         help="Run with reduced parameters for quick results")
-    parser.add_argument("--summary_interval", type=int, default=15,
+    parser.add.argument("--summary_interval", type=int, default=15,
                         help="Interval in minutes for printing summary updates (default: 15)")
-    parser.add_argument("--enhanced_progress", action="store_true",
+    parser.add.argument("--enhanced_progress", action="store_true",
                         help="Show enhanced progress tracking with percentage completion")
-    parser.add_argument("--slow_mode", action="store_true",
+    parser.add.argument("--slow_mode", action="store_true",
                       help="Run in slow mode with artificial pauses between steps for easier progress monitoring")
-    parser.add_argument("--progress_update_interval", type=int, default=30, 
+    parser.add.argument("--progress_update_interval", type=int, default=30, 
                       help="Interval in seconds between progress updates (default: 30)")
-    parser.add_argument("--progress_delay", type=float, default=0.0,
+    parser.add.argument("--progress_delay", type=float, default=0.0,
                       help="Add a small delay (in seconds) when updating progress to slow down the display")
-    parser.add_argument("--max_log_files", type=int, default=5,
+    parser.add.argument("--max_log_files", type=int, default=5,
                       help="Maximum number of backup log files to keep (default: 5)")
-    parser.add_argument("--consolidated_logs", action="store_true",
+    parser.add.argument("--consolidated_logs", action="store_true",
                       help="Use consolidated logs - fewer files with more content")
     args = parser.parse_args()    
     
