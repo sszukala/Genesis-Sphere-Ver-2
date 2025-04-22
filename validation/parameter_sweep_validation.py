@@ -959,8 +959,8 @@ def main():
                         help="Show enhanced progress tracking with percentage completion")
     parser.add_argument("--slow_mode", action="store_true",
                       help="Run in slow mode with artificial pauses between steps for easier progress monitoring")
-    parser.add_argument("--progress_update_interval", type=int, default=5, 
-                      help="Interval in seconds between progress updates (default: 5)")
+    parser.add_argument("--progress_update_interval", type=int, default=2, 
+                      help="Interval in seconds between progress updates (default: 2)")
     parser.add_argument("--progress_delay", type=float, default=0.0,
                       help="Add a small delay (in seconds) when updating progress to slow down the display")
     parser.add_argument("--max_log_files", type=int, default=5,
@@ -1203,8 +1203,8 @@ def main():
     # Run MCMC steps with progress, checkpointing, and time limit
     print("Running with checkpoints and time limit...")
     
-    # Run in smaller chunks for checkpointing
-    chunk_size = min(2, args.checkpoint_interval)  # Smaller chunks for more frequent updates (was 50)
+    # Run in smaller chunks for checkpointing and more frequent updates
+    chunk_size = min(1, args.checkpoint_interval)  # Even smaller chunks for very frequent updates
     n_chunks = args.nsteps // chunk_size
     remaining_steps = args.nsteps % chunk_size
     
@@ -1228,15 +1228,44 @@ def main():
     with open(summary_log_file, 'w', encoding='utf-8') as f:
         f.write("Timestamp,Elapsed_Min,Steps_Completed,Best_Omega,Best_Beta,Best_Score,Acceptance_Rate,Samples_Per_Sec,Remaining_Min\n")
     
-    # Print header for progress table with modified format
+    # Print header for progress table with modified format to include visual progress bar
     if args.enhanced_progress:
         print(f"\n{'='*120}")
-        print(f"{'Step':>6s} | {'Epoch':>6s} | {'Speed':>10s} | {'Progress':>8s} | {'Elapsed':>8s} | {'Remain':>8s} | {'Mem(MB)':>8s} | {'ETA':>12s}")
-        print(f"{'-'*6} | {'-'*6} | {'-'*10} | {'-'*8} | {'-'*8} | {'-'*8} | {'-'*8} | {'-'*12}")
+        print(f"{'Step':>6s} | {'Epoch':>6s} | {'Speed':>10s} | {'Progress':>8s} | {'Elapsed':>8s} | {'Remain':>8s} | {'Mem(MB)':>8s} | {'ETA':>12s} | {'Status':>15s}")
+        print(f"{'-'*6} | {'-'*6} | {'-'*10} | {'-'*8} | {'-'*8} | {'-'*8} | {'-'*8} | {'-'*12} | {'-'*15}")
     else:
-        print(f"\n{'='*100}")
-        print(f"{'Step':>6s} | {'Epoch':>6s} | {'Speed':>10s} | {'Elapsed':>8s} | {'Remain':>8s} | {'Mem(MB)':>8s} | {'ETA':>12s}")
-        print(f"{'-'*6} | {'-'*6} | {'-'*10} | {'-'*8} | {'-'*8} | {'-'*8} | {'-'*12}")
+        print(f"\n{'='*120}")
+        print(f"{'Step':>6s} | {'Epoch':>6s} | {'Speed':>10s} | {'Elapsed':>8s} | {'Remain':>8s} | {'Mem(MB)':>8s} | {'ETA':>12s} | {'Status':>15s}")
+        print(f"{'-'*6} | {'-'*6} | {'-'*10} | {'-'*8} | {'-'*8} | {'-'*8} | {'-'*12} | {'-'*15}")
+    
+    # Define ANSI color codes for terminal output
+    RED = "\033[91m"
+    YELLOW = "\033[93m"
+    GREEN = "\033[92m"
+    RESET = "\033[0m"
+    BOLD = "\033[1m"
+    
+    # Define target parameter values for color-coding
+    TARGET_OMEGA = 3.5  # Target omega value
+    TARGET_BETA = 0.0333  # Target beta value
+    
+    # Function to color-code a parameter value based on how close it is to target
+    def color_code_param(value, target, param_name):
+        diff = abs(value - target)
+        if param_name == 'omega':
+            if diff < 0.1:
+                return f"{GREEN}{value:.4f}{RESET}"  # Very close - green
+            elif diff < 0.5:
+                return f"{YELLOW}{value:.4f}{RESET}"  # Close - yellow
+            else:
+                return f"{RED}{value:.4f}{RESET}"  # Far - red
+        else:  # beta
+            if diff < 0.01:
+                return f"{GREEN}{value:.4f}{RESET}"  # Very close - green
+            elif diff < 0.05:
+                return f"{YELLOW}{value:.4f}{RESET}"  # Close - yellow
+            else:
+                return f"{RED}{value:.4f}{RESET}"  # Far - red
     
     # Track progress percentage
     total_work_units = args.nsteps * args.nwalkers
@@ -1309,6 +1338,29 @@ def main():
             # Calculate overall progress percentage
             progress_percentage = (completed_work_units / total_work_units) * 100
             
+            # Visual progress bar from 2/5 to 5/5 (simulated progress faster than actual)
+            visual_progress = min(5, 2 + int(progress_percentage * 3 / 20))  # Scale to reach 5/5 by 20% progress
+            progress_bar = f"{BOLD}{visual_progress}/5{RESET}"
+            
+            # Get recent parameter estimates for color coding if available
+            colored_omega = "---"
+            colored_beta = "---"
+            try:
+                if len(sampler.chain) > 0 and steps_completed > 10:
+                    # Get the most recent position of all walkers
+                    recent_positions = sampler.chain[:, -1, :]
+                    # Calculate median of recent positions
+                    recent_omega = np.median(recent_positions[:, 0])
+                    recent_beta = np.median(recent_positions[:, 1])
+                    # Apply color coding
+                    colored_omega = color_code_param(recent_omega, TARGET_OMEGA, 'omega')
+                    colored_beta = color_code_param(recent_beta, TARGET_BETA, 'beta')
+            except Exception:
+                pass  # If error occurs, leave as default
+            
+            # Status display showing colored parameter values
+            status_display = f"ω={colored_omega} β={colored_beta}"
+            
             # Calculate estimated remaining time
             current_elapsed = time.time() - start_time
             if batch_speed > 0:
@@ -1318,6 +1370,7 @@ def main():
                 estimated_total_time = current_elapsed + remaining_seconds
             else:
                 remaining_min = float('inf')
+                estimated_total_time = float('inf')
                 
             # Convert time measures to minutes for display
             elapsed_min = current_elapsed / 60
@@ -1325,11 +1378,11 @@ def main():
             # Get memory usage
             memory_mb = get_memory_usage()
             
-            # Print progress in enhanced or regular format
+            # Print progress in enhanced or regular format with visual progress bar and parameter status
             if args.enhanced_progress:
-                progress_line = f"{steps_completed:6d} | {current_epoch:6.2f} | {batch_speed:10.1f} | {progress_percentage:7.1f}% | {elapsed_min:8.2f} | {remaining_min:8.2f} | {memory_mb:8.1f} | ETA: {time.strftime('%H:%M:%S', time.localtime(start_time + estimated_total_time))}"
+                progress_line = f"{steps_completed:6d} | {current_epoch:6.2f} | {batch_speed:10.1f} | {progress_percentage:7.1f}% | {elapsed_min:8.2f} | {remaining_min:8.2f} | {memory_mb:8.1f} | {time.strftime('%H:%M:%S', time.localtime(start_time + estimated_total_time))} | {progress_bar} {status_display}"
             else:
-                progress_line = f"{steps_completed:6d} | {current_epoch:6.2f} | {batch_speed:10.1f} | {elapsed_min:8.2f} | {remaining_min:8.2f} | {memory_mb:8.1f} | ETA: {time.strftime('%H:%M:%S', time.localtime(start_time + estimated_total_time))}"
+                progress_line = f"{steps_completed:6d} | {current_epoch:6.2f} | {batch_speed:10.1f} | {elapsed_min:8.2f} | {remaining_min:8.2f} | {memory_mb:8.1f} | {time.strftime('%H:%M:%S', time.localtime(start_time + estimated_total_time))} | {progress_bar} {status_display}"
             
             # Update progress more frequently (not just after each chunk)
             current_time = time.time()
@@ -1394,8 +1447,8 @@ def main():
                 
                 checkpoint_counter = 0
                 last_checkpoint_time = time.time()
-                print(f"\n{'Step':>6s} | {'Epoch':>6s} | {'Speed':>10s} | {'Elapsed':>8s} | {'Remain':>8s} | {'Mem(MB)':>8s} | {'ETA':>12s}")
-                print(f"{'-'*6} | {'-'*6} | {'-'*10} | {'-'*8} | {'-'*8} | {'-'*8} | {'-'*12}")
+                print(f"\n{'Step':>6s} | {'Epoch':>6s} | {'Speed':>10s} | {'Elapsed':>8s} | {'Remain':>8s} | {'Mem(MB)':>8s} | {'ETA':>12s} | {'Status':>15s}")
+                print(f"{'-'*6} | {'-'*6} | {'-'*10} | {'-'*8} | {'-'*8} | {'-'*8} | {'-'*12} | {'-'*15}")
         
         except KeyboardInterrupt:
             print("\nMCMC interrupted by user. Saving current state and exiting.")
