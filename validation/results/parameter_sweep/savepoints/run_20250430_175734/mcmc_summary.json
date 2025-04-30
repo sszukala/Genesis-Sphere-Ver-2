@@ -1,0 +1,12 @@
+{
+    "omega": {
+        "median": 3.5,
+        "upper_err": 0.0,
+        "lower_err": 0.0
+    },
+    "beta": {
+        "median": 0.0333,
+        "upper_err": 0.0,
+        "lower_err": 0.0
+    }
+}
